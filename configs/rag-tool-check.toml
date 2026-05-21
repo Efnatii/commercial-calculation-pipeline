@@ -1,4 +1,4 @@
-# External RAG-Anything tool/config checker.
+# External RAG-Anything capability/config checker.
 # This file is intentionally repo-local. It does not register an MCP server,
 # Codex plugin, or any other runtime integration.
 
@@ -12,20 +12,37 @@ python = "python"
 include_process_env = true
 command_timeout_seconds = 20
 network_checks = false
+storage_connection_checks = false
+smoke_tests = false
+
+[coverage]
+# When true, the checker compares this manifest against the current submodule.
+# Any parser, processor, optional extra, CLI argument, public API method,
+# package export, or env key discovered in RAG-Anything but missing here fails
+# the coverage check.
+require_full_coverage = true
+require_full_env_coverage = true
+require_full_cli_coverage = true
+require_full_export_coverage = true
+require_full_api_coverage = true
 
 [policy]
 # strict=true treats warnings as failures. You can also pass --strict.
 strict = false
 
-# The checker discovers every tool RAG-Anything offers, but only items listed
-# here are treated as hard requirements.
 required_parsers = ["mineru"]
 optional_parsers = ["docling", "paddleocr"]
 
 required_processors = ["image", "table", "equation"]
 optional_processors = ["generic"]
 
-# Examples: ["office", "image", "text", "markdown", "paddleocr_pdf"]
+# Optional extras declared by RAG-Anything's pyproject.toml. "all" is a meta
+# extra and is covered here even though it is not a separate runtime feature.
+required_optional_extras = []
+optional_extras = ["image", "text", "office", "paddleocr", "markdown", "all"]
+
+# Format/runtime feature checks mapped from the optional extras.
+# Examples to hard-require: ["office", "image", "text", "markdown", "paddleocr_pdf"].
 required_format_features = []
 optional_format_features = ["office", "image", "text", "markdown", "paddleocr_pdf"]
 
@@ -45,12 +62,17 @@ required_env = [
 
 secret_env = [
   "OPENAI_API_KEY",
+  "MINIMAX_API_KEY",
   "LLM_BINDING_API_KEY",
   "EMBEDDING_BINDING_API_KEY",
+  "RERANK_BINDING_API_KEY",
   "LIGHTRAG_API_KEY",
   "TOKEN_SECRET",
   "POSTGRES_PASSWORD",
   "NEO4J_PASSWORD",
+  "AGE_POSTGRES_PASSWORD",
+  "TIDB_PASSWORD",
+  "MILVUS_PASSWORD",
   "MILVUS_TOKEN",
   "QDRANT_API_KEY",
 ]
@@ -61,6 +83,7 @@ placeholder_values = [
   "your-secure-api-key-here",
   "your_password",
   "your_username",
+  "your_database",
   "xxxxxxxx",
   "token-abc123",
 ]
@@ -68,10 +91,9 @@ placeholder_values = [
 [providers]
 allowed_llm_bindings = ["openai", "ollama", "lollms", "azure_openai", "lmstudio", "vllm"]
 allowed_embedding_bindings = ["openai", "ollama", "lollms", "azure_openai", "lmstudio", "vllm"]
-
-# Bindings that normally require an API key for a production-ready check.
 llm_api_key_required_for = ["openai", "azure_openai"]
 embedding_api_key_required_for = ["openai", "azure_openai"]
+endpoint_bindings = ["openai", "ollama", "lollms", "azure_openai", "lmstudio", "vllm"]
 
 [commands]
 mineru = ["mineru", "--version"]
@@ -79,3 +101,576 @@ libreoffice = [
   ["libreoffice", "--version"],
   ["soffice", "--version"],
 ]
+ollama = ["ollama", "list"]
+pandoc = ["pandoc", "--version"]
+git = ["git", "--version"]
+
+[env_groups.server]
+description = "LightRAG API/WebUI server configuration"
+required = false
+keys = [
+  "HOST",
+  "PORT",
+  "WEBUI_TITLE",
+  "WEBUI_DESCRIPTION",
+  "OLLAMA_EMULATING_MODEL_TAG",
+  "WORKERS",
+  "CORS_ORIGINS",
+]
+
+[env_groups.offline]
+description = "Offline cache and local model support"
+required = false
+keys = ["TIKTOKEN_CACHE_DIR"]
+
+[env_groups.auth]
+description = "Login, JWT, API key, and whitelist configuration"
+required = false
+keys = [
+  "AUTH_ACCOUNTS",
+  "TOKEN_SECRET",
+  "TOKEN_EXPIRE_HOURS",
+  "GUEST_TOKEN_EXPIRE_HOURS",
+  "JWT_ALGORITHM",
+  "LIGHTRAG_API_KEY",
+  "WHITELIST_PATHS",
+]
+
+[env_groups.ssl]
+description = "Optional SSL certificate configuration"
+required = false
+keys = ["SSL", "SSL_CERTFILE", "SSL_KEYFILE"]
+
+[env_groups.directories]
+description = "Input, output, working, and legacy directory configuration"
+required = false
+keys = ["INPUT_DIR", "OUTPUT_DIR", "WORKING_DIR"]
+
+[env_groups.parser]
+description = "Document parser configuration"
+required = false
+keys = [
+  "PARSER",
+  "PARSE_METHOD",
+  "MINERU_PARSE_METHOD",
+  "DISPLAY_CONTENT_STATS",
+  "USE_FULL_PATH",
+]
+
+[env_groups.multimodal]
+description = "Image, table, and equation processing switches"
+required = false
+keys = [
+  "ENABLE_IMAGE_PROCESSING",
+  "ENABLE_TABLE_PROCESSING",
+  "ENABLE_EQUATION_PROCESSING",
+]
+
+[env_groups.batch]
+description = "Batch file processing configuration"
+required = false
+keys = [
+  "MAX_CONCURRENT_FILES",
+  "SUPPORTED_FILE_EXTENSIONS",
+  "RECURSIVE_FOLDER_PROCESSING",
+  "MAX_PARALLEL_INSERT",
+]
+
+[env_groups.context]
+description = "Context extraction settings"
+required = false
+keys = [
+  "CONTEXT_WINDOW",
+  "CONTEXT_MODE",
+  "MAX_CONTEXT_TOKENS",
+  "INCLUDE_HEADERS",
+  "INCLUDE_CAPTIONS",
+  "CONTEXT_FILTER_CONTENT_TYPES",
+  "CONTENT_FORMAT",
+]
+
+[env_groups.public_assets]
+description = "Public media URL mapping for generated image/table assets"
+required = false
+keys = [
+  "RAGANYTHING_PUBLIC_ASSET_BASE_URL",
+  "RAGANYTHING_PUBLIC_ASSET_STRIP_PREFIX",
+]
+
+[env_groups.logging]
+description = "Log level, verbosity, rotation, and log directory"
+required = false
+keys = [
+  "LOG_LEVEL",
+  "VERBOSE",
+  "LOG_MAX_BYTES",
+  "LOG_BACKUP_COUNT",
+  "LOG_DIR",
+]
+
+[env_groups.query]
+description = "RAG query, graph, rerank, chunking, and token limits"
+required = false
+keys = [
+  "HISTORY_TURNS",
+  "COSINE_THRESHOLD",
+  "TOP_K",
+  "MAX_GRAPH_NODES",
+  "MAX_TOKEN_TEXT_CHUNK",
+  "MAX_TOKEN_RELATION_DESC",
+  "MAX_TOKEN_ENTITY_DESC",
+  "MAX_TOKEN_SUMMARY",
+  "FORCE_LLM_SUMMARY_ON_MERGE",
+  "SUMMARY_LANGUAGE",
+  "CHUNK_SIZE",
+  "CHUNK_OVERLAP_SIZE",
+  "RERANK_MODEL",
+  "RERANK_BINDING_HOST",
+  "RERANK_BINDING_API_KEY",
+]
+
+[env_groups.llm]
+description = "LLM, VLM, Azure, vLLM, and cache settings"
+required = false
+keys = [
+  "ENABLE_LLM_CACHE",
+  "ENABLE_LLM_CACHE_FOR_EXTRACT",
+  "TIMEOUT",
+  "TEMPERATURE",
+  "MAX_ASYNC",
+  "MAX_TOKENS",
+  "LLM_BINDING",
+  "LLM_MODEL",
+  "VISION_MODEL",
+  "LLM_BINDING_HOST",
+  "LLM_BINDING_API_KEY",
+  "AZURE_OPENAI_API_VERSION",
+  "AZURE_OPENAI_DEPLOYMENT",
+]
+
+[env_groups.embedding]
+description = "Embedding provider, model, dimensions, and Azure settings"
+required = false
+keys = [
+  "EMBEDDING_BINDING",
+  "EMBEDDING_MODEL",
+  "EMBEDDING_DIM",
+  "EMBEDDING_BINDING_API_KEY",
+  "EMBEDDING_BINDING_HOST",
+  "EMBEDDING_BATCH_NUM",
+  "EMBEDDING_FUNC_MAX_ASYNC",
+  "MAX_EMBED_TOKENS",
+  "AZURE_EMBEDDING_DEPLOYMENT",
+  "AZURE_EMBEDDING_API_VERSION",
+]
+
+[env_groups.storage_selection]
+description = "LightRAG storage class selection"
+required = false
+keys = [
+  "LIGHTRAG_KV_STORAGE",
+  "LIGHTRAG_VECTOR_STORAGE",
+  "LIGHTRAG_DOC_STATUS_STORAGE",
+  "LIGHTRAG_GRAPH_STORAGE",
+]
+
+[env_groups.postgres]
+description = "PostgreSQL storage configuration"
+required = false
+keys = [
+  "POSTGRES_HOST",
+  "POSTGRES_PORT",
+  "POSTGRES_USER",
+  "POSTGRES_PASSWORD",
+  "POSTGRES_DATABASE",
+  "POSTGRES_MAX_CONNECTIONS",
+  "POSTGRES_WORKSPACE",
+]
+
+[env_groups.neo4j]
+description = "Neo4j graph storage configuration"
+required = false
+keys = ["NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD"]
+
+[env_groups.age]
+description = "Apache AGE graph storage configuration"
+required = false
+keys = [
+  "AGE_POSTGRES_DB",
+  "AGE_POSTGRES_USER",
+  "AGE_POSTGRES_PASSWORD",
+  "AGE_POSTGRES_HOST",
+  "AGE_POSTGRES_PORT",
+  "AGE_GRAPH_NAME",
+]
+
+[env_groups.tidb]
+description = "Deprecated TiDB storage configuration"
+required = false
+keys = [
+  "TIDB_HOST",
+  "TIDB_PORT",
+  "TIDB_USER",
+  "TIDB_PASSWORD",
+  "TIDB_DATABASE",
+  "TIDB_WORKSPACE",
+]
+
+[env_groups.mongodb]
+description = "MongoDB storage configuration"
+required = false
+keys = ["MONGO_URI", "MONGO_DATABASE", "MONGODB_GRAPH"]
+
+[env_groups.milvus]
+description = "Milvus vector storage configuration"
+required = false
+keys = [
+  "MILVUS_URI",
+  "MILVUS_DB_NAME",
+  "MILVUS_USER",
+  "MILVUS_PASSWORD",
+  "MILVUS_TOKEN",
+]
+
+[env_groups.qdrant]
+description = "Qdrant vector storage configuration"
+required = false
+keys = ["QDRANT_URL", "QDRANT_API_KEY"]
+
+[env_groups.redis]
+description = "Redis cache/storage configuration"
+required = false
+keys = ["REDIS_URI"]
+
+[env_groups.ollama_examples]
+description = "Ollama example-specific configuration"
+required = false
+keys = [
+  "OLLAMA_HOST",
+  "OLLAMA_LLM_MODEL",
+  "OLLAMA_EMBEDDING_MODEL",
+  "OLLAMA_EMBEDDING_DIM",
+]
+
+[env_groups.minimax_examples]
+description = "MiniMax example-specific configuration"
+required = false
+keys = [
+  "MINIMAX_BASE_URL",
+  "MINIMAX_API_KEY",
+  "MINIMAX_LLM_MODEL",
+  "OPENAI_API_KEY",
+]
+
+[env_validation]
+booleans = [
+  "SSL",
+  "VERBOSE",
+  "DISPLAY_CONTENT_STATS",
+  "ENABLE_IMAGE_PROCESSING",
+  "ENABLE_TABLE_PROCESSING",
+  "ENABLE_EQUATION_PROCESSING",
+  "RECURSIVE_FOLDER_PROCESSING",
+  "INCLUDE_HEADERS",
+  "INCLUDE_CAPTIONS",
+  "ENABLE_LLM_CACHE",
+  "ENABLE_LLM_CACHE_FOR_EXTRACT",
+  "MONGODB_GRAPH",
+  "USE_FULL_PATH",
+]
+urls = [
+  "LLM_BINDING_HOST",
+  "EMBEDDING_BINDING_HOST",
+  "RERANK_BINDING_HOST",
+  "RAGANYTHING_PUBLIC_ASSET_BASE_URL",
+  "NEO4J_URI",
+  "MONGO_URI",
+  "MILVUS_URI",
+  "QDRANT_URL",
+  "REDIS_URI",
+  "OLLAMA_HOST",
+  "MINIMAX_BASE_URL",
+]
+paths = [
+  "INPUT_DIR",
+  "OUTPUT_DIR",
+  "WORKING_DIR",
+  "TIKTOKEN_CACHE_DIR",
+  "LOG_DIR",
+  "SSL_CERTFILE",
+  "SSL_KEYFILE",
+  "RAGANYTHING_PUBLIC_ASSET_STRIP_PREFIX",
+]
+comma_lists = [
+  "CORS_ORIGINS",
+  "SUPPORTED_FILE_EXTENSIONS",
+  "CONTEXT_FILTER_CONTENT_TYPES",
+  "WHITELIST_PATHS",
+]
+paired = [
+  ["RAGANYTHING_PUBLIC_ASSET_BASE_URL", "RAGANYTHING_PUBLIC_ASSET_STRIP_PREFIX"],
+  ["SSL_CERTFILE", "SSL_KEYFILE"],
+]
+
+[env_validation.enums]
+PARSER = ["mineru", "docling", "paddleocr"]
+PARSE_METHOD = ["auto", "ocr", "txt"]
+MINERU_PARSE_METHOD = ["auto", "ocr", "txt"]
+CONTEXT_MODE = ["page", "chunk", "token"]
+CONTENT_FORMAT = ["minerU", "auto", "text_chunks", "text"]
+LLM_BINDING = ["openai", "ollama", "lollms", "azure_openai", "lmstudio", "vllm"]
+EMBEDDING_BINDING = ["openai", "ollama", "lollms", "azure_openai", "lmstudio", "vllm"]
+LOG_LEVEL = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+JWT_ALGORITHM = ["HS256", "HS384", "HS512", "RS256", "RS384", "RS512"]
+
+[env_validation.numeric_minimums]
+PORT = 1
+WORKERS = 1
+TOKEN_EXPIRE_HOURS = 1
+GUEST_TOKEN_EXPIRE_HOURS = 1
+MAX_CONCURRENT_FILES = 1
+CONTEXT_WINDOW = 0
+MAX_CONTEXT_TOKENS = 1
+MAX_GRAPH_NODES = 1
+HISTORY_TURNS = 0
+TOP_K = 1
+MAX_TOKEN_TEXT_CHUNK = 1
+MAX_TOKEN_RELATION_DESC = 1
+MAX_TOKEN_ENTITY_DESC = 1
+MAX_TOKEN_SUMMARY = 1
+FORCE_LLM_SUMMARY_ON_MERGE = 1
+MAX_PARALLEL_INSERT = 1
+CHUNK_SIZE = 1
+CHUNK_OVERLAP_SIZE = 0
+TIMEOUT = 1
+MAX_ASYNC = 1
+MAX_TOKENS = 1
+EMBEDDING_DIM = 1
+EMBEDDING_BATCH_NUM = 1
+EMBEDDING_FUNC_MAX_ASYNC = 1
+MAX_EMBED_TOKENS = 1
+POSTGRES_PORT = 1
+POSTGRES_MAX_CONNECTIONS = 1
+AGE_POSTGRES_PORT = 1
+TIDB_PORT = 1
+OLLAMA_EMBEDDING_DIM = 1
+
+[env_validation.numeric_ranges]
+TEMPERATURE = [0, 2]
+COSINE_THRESHOLD = [0, 1]
+
+[storage_backends]
+declared = [
+  "postgres",
+  "neo4j",
+  "age",
+  "tidb",
+  "mongodb",
+  "milvus",
+  "qdrant",
+  "redis",
+]
+
+[storage_backends.postgres]
+selector_contains = ["PG"]
+required_keys = ["POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DATABASE"]
+
+[storage_backends.neo4j]
+selector_contains = ["Neo4J"]
+required_keys = ["NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD"]
+
+[storage_backends.age]
+selector_contains = ["AGE"]
+required_keys = ["AGE_POSTGRES_HOST", "AGE_POSTGRES_PORT", "AGE_POSTGRES_USER", "AGE_POSTGRES_PASSWORD", "AGE_POSTGRES_DB"]
+
+[storage_backends.tidb]
+selector_contains = ["TiDB"]
+required_keys = ["TIDB_HOST", "TIDB_PORT", "TIDB_USER", "TIDB_PASSWORD", "TIDB_DATABASE"]
+
+[storage_backends.mongodb]
+selector_contains = ["Mongo"]
+required_keys = ["MONGO_URI", "MONGO_DATABASE"]
+
+[storage_backends.milvus]
+selector_contains = ["Milvus"]
+required_keys = ["MILVUS_URI", "MILVUS_DB_NAME"]
+
+[storage_backends.qdrant]
+selector_contains = ["Qdrant"]
+required_keys = ["QDRANT_URL"]
+
+[storage_backends.redis]
+selector_contains = ["Redis"]
+required_keys = ["REDIS_URI"]
+
+[cli.parser]
+module = "raganything.parser"
+description = "Single-document parser CLI"
+arguments = [
+  "file_path",
+  "--output",
+  "--method",
+  "--lang",
+  "--backend",
+  "--device",
+  "--source",
+  "--no-formula",
+  "--no-table",
+  "--stats",
+  "--check",
+  "--parser",
+  "--vlm_url",
+]
+method_choices = ["auto", "txt", "ocr"]
+backend_choices = ["pipeline", "hybrid-auto-engine", "hybrid-http-client", "vlm-auto-engine", "vlm-http-client"]
+source_choices = ["huggingface", "modelscope", "local"]
+
+[cli.batch_parser]
+module = "raganything.batch_parser"
+description = "Batch document parser CLI"
+arguments = [
+  "paths",
+  "--output",
+  "--parser",
+  "--method",
+  "--workers",
+  "--no-progress",
+  "--recursive",
+  "--timeout",
+  "--dry-run",
+]
+method_choices = ["auto", "txt", "ocr"]
+
+[cli.enhanced_markdown]
+module = "raganything.enhanced_markdown"
+description = "Enhanced Markdown-to-PDF CLI"
+arguments = [
+  "input",
+  "--output",
+  "--method",
+  "--css",
+  "--info",
+]
+method_choices = ["auto", "weasyprint", "pandoc", "pandoc_system"]
+optional_tools = ["pandoc"]
+
+[api.raganything]
+description = "Main RAGAnything class and mixin methods"
+methods = [
+  "update_config",
+  "finalize_storages",
+  "check_parser_installation",
+  "verify_parser_installation_once",
+  "get_config_info",
+  "set_content_source_for_context",
+  "update_context_config",
+  "get_processor_info",
+  "parse_document",
+  "get_document_processing_status",
+  "process_document_complete",
+  "process_document_complete_lightrag_api",
+  "insert_content_list",
+  "is_document_fully_processed",
+  "process_folder_complete",
+  "process_documents_batch",
+  "process_documents_batch_async",
+  "get_supported_file_extensions",
+  "process_documents_with_rag_batch",
+  "aquery",
+  "aquery_with_multimodal",
+  "aquery_vlm_enhanced",
+  "query",
+  "query_with_multimodal",
+]
+
+[api.parser]
+description = "Parser registry and CLI/library helpers"
+methods = [
+  "register_parser",
+  "unregister_parser",
+  "list_parsers",
+  "get_supported_parsers",
+  "get_parser",
+]
+
+[api.parser_classes]
+description = "Built-in parser class capabilities"
+methods = [
+  "check_installation",
+  "convert_file_to_pdf",
+  "convert_office_to_pdf",
+  "convert_text_to_pdf",
+  "filter_supported_files",
+  "parse_document",
+  "parse_html",
+  "parse_image",
+  "parse_office_doc",
+  "parse_pdf",
+  "parse_text_file",
+  "read_from_block",
+  "read_from_block_recursive",
+]
+
+[api.batch_parser]
+description = "Standalone BatchParser class methods"
+methods = [
+  "get_supported_extensions",
+  "process_single_file",
+  "process_batch",
+  "process_batch_async",
+]
+
+[api.batch_result]
+description = "Batch processing result helpers"
+methods = ["success_rate", "summary"]
+
+[api.markdown]
+description = "Enhanced Markdown converter"
+methods = [
+  "close",
+  "convert_markdown_to_pdf",
+  "convert_with_pandoc",
+  "convert_with_weasyprint",
+  "get_backend_info",
+]
+
+[api.prompt_manager]
+description = "Prompt language manager"
+methods = [
+  "register_prompt_language",
+  "set_prompt_language",
+  "get_prompt_language",
+  "reset_prompts",
+  "get_available_languages",
+]
+
+[exports.core]
+required = true
+symbols = ["RAGAnything", "RAGAnythingConfig", "Parser"]
+
+[exports.parser_registry]
+required = false
+symbols = ["register_parser", "unregister_parser", "list_parsers", "get_supported_parsers"]
+
+[exports.resilience]
+required = false
+symbols = ["retry", "async_retry", "CircuitBreaker"]
+
+[exports.callbacks]
+required = false
+symbols = ["ProcessingCallback", "MetricsCallback", "CallbackManager", "ProcessingEvent"]
+
+[exports.prompt_manager]
+required = false
+symbols = ["set_prompt_language", "get_prompt_language", "reset_prompts", "register_prompt_language", "get_available_languages"]
+
+[smoke_tests]
+# Smoke tests are covered by config but disabled by default because they can
+# invoke heavy models, network endpoints, or filesystem conversions.
+parser_install_check = false
+batch_dry_run = false
+markdown_backend_info = false
+import_package_exports = true
+provider_endpoint_probe = false
+storage_connection_probe = false
+sample_ingest = false

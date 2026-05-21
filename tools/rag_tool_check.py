@@ -182,10 +182,12 @@ def as_list(value: Any) -> list[Any]:
         return []
     if isinstance(value, list):
         return value
-    if isinstance(value, tuple):
+    if isinstance(value, (tuple, set, frozenset)):
         return list(value)
     if isinstance(value, str):
         return [item.strip() for item in value.split(",") if item.strip()]
+    if hasattr(value, "__iter__") and not isinstance(value, dict):
+        return list(value)
     return [value]
 
 
@@ -404,6 +406,184 @@ def ast_string_tuple(value: ast.AST) -> list[str]:
     return []
 
 
+def ast_string_list(value: ast.AST) -> list[str]:
+    if isinstance(value, (ast.List, ast.Tuple, ast.Set)):
+        items: list[str] = []
+        for item in value.elts:
+            if isinstance(item, ast.Constant) and isinstance(item.value, str):
+                items.append(item.value)
+        return items
+    return []
+
+
+def first_argument_name(call: ast.Call) -> str:
+    for arg in call.args:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            return arg.value
+    return ""
+
+
+def cli_argument_names(path: Path) -> dict[str, Any]:
+    result: dict[str, Any] = {"arguments": [], "choices": {}, "source": str(path)}
+    if not path.exists():
+        result["error"] = "file not found"
+        return result
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError as exc:
+        result["error"] = str(exc)
+        return result
+
+    arguments: list[str] = []
+    choices: dict[str, list[str]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Attribute) or node.func.attr != "add_argument":
+            continue
+        name = first_argument_name(node)
+        if not name:
+            continue
+        normalized = name.split()[0]
+        arguments.append(normalized)
+        for keyword in node.keywords:
+            if keyword.arg == "choices":
+                values = ast_string_list(keyword.value)
+                if values:
+                    choices[normalized] = values
+    result["arguments"] = arguments
+    result["choices"] = choices
+    return result
+
+
+def discover_cli(rag_dir: Path) -> dict[str, Any]:
+    return {
+        "parser": cli_argument_names(rag_dir / "raganything" / "parser.py"),
+        "batch_parser": cli_argument_names(rag_dir / "raganything" / "batch_parser.py"),
+        "enhanced_markdown": cli_argument_names(
+            rag_dir / "raganything" / "enhanced_markdown.py"
+        ),
+    }
+
+
+def discover_env_surface(rag_dir: Path) -> dict[str, Any]:
+    env_example = rag_dir / "env.example"
+    documented: dict[str, dict[str, Any]] = {}
+    section = "unsectioned"
+    if env_example.exists():
+        for line_no, raw_line in enumerate(
+            env_example.read_text(encoding="utf-8", errors="replace").splitlines(), 1
+        ):
+            stripped = raw_line.strip()
+            if stripped.startswith("###"):
+                title = stripped.strip("#").strip()
+                if title and not set(title) <= {"-"}:
+                    section = title
+                continue
+            line = stripped
+            if line.startswith("#"):
+                line = line[1:].strip()
+            if line.startswith("export "):
+                line = line[len("export ") :].strip()
+            match = re.match(r"^([A-Z_][A-Z0-9_]*)\s*=", line)
+            if match:
+                key = match.group(1)
+                documented.setdefault(
+                    key, {"sections": [], "lines": [], "source": str(env_example)}
+                )
+                documented[key]["sections"].append(section)
+                documented[key]["lines"].append(line_no)
+
+    code_keys: dict[str, list[str]] = {}
+    code_paths = (
+        list((rag_dir / "raganything").rglob("*.py"))
+        + list((rag_dir / "examples").rglob("*.py"))
+        + list((rag_dir / "reproduce").rglob("*.py"))
+    )
+    patterns = [
+        r'get_env_value\("([A-Z0-9_]+)"',
+        r'os\.getenv\("([A-Z0-9_]+)"',
+        r'os\.environ\.get\("([A-Z0-9_]+)"',
+    ]
+    for path in code_paths:
+        text = path.read_text(encoding="utf-8", errors="replace")
+        for pattern in patterns:
+            for key in re.findall(pattern, text):
+                code_keys.setdefault(key, []).append(str(path))
+
+    return {
+        "documented": documented,
+        "code": {key: sorted(set(paths)) for key, paths in code_keys.items()},
+        "all_keys": sorted(set(documented) | set(code_keys)),
+    }
+
+
+def discover_exports(rag_dir: Path) -> dict[str, Any]:
+    init_py = rag_dir / "raganything" / "__init__.py"
+    result: dict[str, Any] = {"symbols": [], "source": str(init_py)}
+    if not init_py.exists():
+        result["error"] = "file not found"
+        return result
+    try:
+        tree = ast.parse(init_py.read_text(encoding="utf-8", errors="replace"))
+    except SyntaxError as exc:
+        result["error"] = str(exc)
+        return result
+
+    symbols: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    symbols.extend(ast_string_list(node.value))
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+            if (
+                isinstance(node.func.value, ast.Name)
+                and node.func.value.id == "__all__"
+                and node.func.attr == "extend"
+                and node.args
+            ):
+                symbols.extend(ast_string_list(node.args[0]))
+    result["symbols"] = sorted(set(symbols))
+    return result
+
+
+def discover_public_api(rag_dir: Path) -> dict[str, Any]:
+    files = [
+        "raganything.py",
+        "processor.py",
+        "query.py",
+        "batch.py",
+        "parser.py",
+        "batch_parser.py",
+        "enhanced_markdown.py",
+        "prompt_manager.py",
+    ]
+    ignored = {"main"}
+    result: dict[str, list[str]] = {}
+    for filename in files:
+        path = rag_dir / "raganything" / filename
+        if not path.exists():
+            continue
+        try:
+            tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except SyntaxError:
+            continue
+        methods: set[str] = set()
+        for node in tree.body:
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if not node.name.startswith("_") and node.name not in ignored:
+                    methods.add(node.name)
+            elif isinstance(node, ast.ClassDef):
+                for child in node.body:
+                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        if not child.name.startswith("_") and child.name not in ignored:
+                            methods.add(child.name)
+        if methods:
+            result[filename] = sorted(methods)
+    return result
+
+
 def discover_supported_parsers(rag_dir: Path) -> dict[str, Any]:
     parser_py = rag_dir / "raganything" / "parser.py"
     discovered = {
@@ -566,9 +746,16 @@ class Checker:
         self.config = config
         self.paths = config.get("paths", {})
         self.execution = config.get("execution", {})
+        self.coverage = config.get("coverage", {})
         self.policy = config.get("policy", {})
         self.providers = config.get("providers", {})
         self.commands = config.get("commands", {})
+        self.env_groups = config.get("env_groups", {})
+        self.env_validation = config.get("env_validation", {})
+        self.storage_backends = config.get("storage_backends", {})
+        self.cli_manifest = config.get("cli", {})
+        self.api_manifest = config.get("api", {})
+        self.exports_manifest = config.get("exports", {})
         self.strict = bool(self.policy.get("strict", False) or strict_override)
         self.python = python_override or str(self.execution.get("python", "python"))
         self.timeout = int(self.execution.get("command_timeout_seconds", 20))
@@ -620,13 +807,48 @@ class Checker:
             return STATUS_OK
         return STATUS_FAIL if required else STATUS_WARN
 
+    def configured_env_keys(self) -> set[str]:
+        keys: set[str] = set()
+        for group in self.env_groups.values():
+            if isinstance(group, dict):
+                keys.update(str(item).strip() for item in as_list(group.get("keys", [])))
+        keys.update(self.required_env)
+        keys.update(str(item).strip() for item in as_list(self.policy.get("secret_env", [])))
+        for value in self.env_validation.values():
+            if isinstance(value, dict):
+                keys.update(str(item).strip() for item in value.keys())
+            else:
+                keys.update(str(item).strip() for item in as_list(value))
+        for backend in self.storage_backends.values():
+            if isinstance(backend, dict):
+                keys.update(str(item).strip() for item in as_list(backend.get("required_keys", [])))
+        return {key for key in keys if key}
+
+    def configured_export_symbols(self) -> set[str]:
+        symbols: set[str] = set()
+        for group in self.exports_manifest.values():
+            if isinstance(group, dict):
+                symbols.update(str(item).strip() for item in as_list(group.get("symbols", [])))
+        return {symbol for symbol in symbols if symbol}
+
+    def configured_api_methods(self) -> set[str]:
+        methods: set[str] = set()
+        for group in self.api_manifest.values():
+            if isinstance(group, dict):
+                methods.update(str(item).strip() for item in as_list(group.get("methods", [])))
+        return {method for method in methods if method}
+
     def discover(self) -> dict[str, Any]:
         return {
             "parsers": discover_supported_parsers(self.rag_dir),
             "processors": discover_processors(self.rag_dir),
             "pyproject": discover_pyproject(self.rag_dir),
             "env_example": discover_env_example(self.rag_dir),
+            "env_surface": discover_env_surface(self.rag_dir),
             "default_extensions": discover_default_extensions(self.rag_dir),
+            "cli": discover_cli(self.rag_dir),
+            "exports": discover_exports(self.rag_dir),
+            "public_api": discover_public_api(self.rag_dir),
         }
 
     def check_project(self, discovered: dict[str, Any]) -> None:
@@ -740,6 +962,122 @@ class Checker:
         else:
             self.add("discover", "env_example", STATUS_WARN, "RAG-Anything/env.example is missing")
 
+        env_surface = discovered.get("env_surface", {})
+        env_keys = env_surface.get("all_keys", [])
+        if env_keys:
+            self.add("discover", "env_surface", STATUS_OK, f"Found {len(env_keys)} env keys across env.example/code")
+
+        cli = discovered.get("cli", {})
+        if cli:
+            parts = [
+                f"{name}:{len(info.get('arguments', []))}"
+                for name, info in sorted(cli.items())
+            ]
+            self.add("discover", "cli_surface", STATUS_OK, ", ".join(parts))
+
+        exports = discovered.get("exports", {}).get("symbols", [])
+        if exports:
+            self.add("discover", "package_exports", STATUS_OK, ", ".join(exports))
+
+    def check_coverage_manifest(self, discovered: dict[str, Any]) -> None:
+        if not self.coverage.get("require_full_coverage", False):
+            self.add("coverage", "manifest", STATUS_SKIP, "Full coverage enforcement is disabled")
+            return
+
+        parser_names = normalize_names(discovered.get("parsers", {}).get("names", []))
+        configured_parsers = self.required_parsers | self.optional_parsers
+        missing_parsers = sorted(parser_names - configured_parsers)
+        self.add(
+            "coverage",
+            "parsers",
+            STATUS_OK if not missing_parsers else STATUS_FAIL,
+            "All discovered parsers are listed" if not missing_parsers else f"Missing parser coverage: {', '.join(missing_parsers)}",
+            required=True,
+        )
+
+        processor_names = normalize_names(discovered.get("processors", {}).keys())
+        configured_processors = self.required_processors | self.optional_processors
+        missing_processors = sorted(processor_names - configured_processors)
+        self.add(
+            "coverage",
+            "processors",
+            STATUS_OK if not missing_processors else STATUS_FAIL,
+            "All discovered processors are listed" if not missing_processors else f"Missing processor coverage: {', '.join(missing_processors)}",
+            required=True,
+        )
+
+        extras = normalize_names(discovered.get("pyproject", {}).get("optional_dependencies", {}).keys())
+        configured_extras = normalize_names(self.policy.get("required_optional_extras", [])) | normalize_names(
+            self.policy.get("optional_extras", [])
+        )
+        missing_extras = sorted(extras - configured_extras)
+        self.add(
+            "coverage",
+            "optional_extras",
+            STATUS_OK if not missing_extras else STATUS_FAIL,
+            "All optional extras are listed" if not missing_extras else f"Missing optional extra coverage: {', '.join(missing_extras)}",
+            required=True,
+        )
+
+        if self.coverage.get("require_full_env_coverage", False):
+            discovered_env = set(discovered.get("env_surface", {}).get("all_keys", []))
+            configured_env = self.configured_env_keys()
+            missing_env = sorted(discovered_env - configured_env)
+            self.add(
+                "coverage",
+                "env_keys",
+                STATUS_OK if not missing_env else STATUS_FAIL,
+                f"All {len(discovered_env)} discovered env keys are grouped"
+                if not missing_env
+                else f"Missing env key coverage: {', '.join(missing_env)}",
+                required=True,
+            )
+
+        if self.coverage.get("require_full_cli_coverage", False):
+            for cli_name, info in sorted(discovered.get("cli", {}).items()):
+                discovered_args = set(info.get("arguments", []))
+                configured_args = set(as_list(self.cli_manifest.get(cli_name, {}).get("arguments", [])))
+                missing_args = sorted(discovered_args - configured_args)
+                self.add(
+                    "coverage",
+                    f"cli:{cli_name}",
+                    STATUS_OK if not missing_args else STATUS_FAIL,
+                    f"All {len(discovered_args)} CLI args are listed"
+                    if not missing_args
+                    else f"Missing CLI arg coverage: {', '.join(missing_args)}",
+                    required=True,
+                )
+
+        if self.coverage.get("require_full_export_coverage", False):
+            discovered_exports = set(discovered.get("exports", {}).get("symbols", []))
+            configured_exports = self.configured_export_symbols()
+            missing_exports = sorted(discovered_exports - configured_exports)
+            self.add(
+                "coverage",
+                "exports",
+                STATUS_OK if not missing_exports else STATUS_FAIL,
+                "All package exports are listed" if not missing_exports else f"Missing export coverage: {', '.join(missing_exports)}",
+                required=True,
+            )
+
+        if self.coverage.get("require_full_api_coverage", False):
+            discovered_methods = {
+                method
+                for methods in discovered.get("public_api", {}).values()
+                for method in methods
+            }
+            configured_methods = self.configured_api_methods()
+            missing_methods = sorted(discovered_methods - configured_methods)
+            self.add(
+                "coverage",
+                "public_api",
+                STATUS_OK if not missing_methods else STATUS_FAIL,
+                f"All {len(discovered_methods)} public methods are listed"
+                if not missing_methods
+                else f"Missing public API coverage: {', '.join(missing_methods)}",
+                required=True,
+            )
+
     def check_env_files(self) -> tuple[dict[str, str], dict[str, Any]]:
         env_paths = [
             resolve_path(self.project_root, str(item))
@@ -760,10 +1098,11 @@ class Checker:
             )
         for missing_path in missing:
             self.add("config", "env_file_missing", STATUS_SKIP, missing_path)
+        configured_env = self.configured_env_keys()
         redacted = {
             key: redact_value(key, value, self.secret_env)
             for key, value in sorted(effective_env.items())
-            if key in self.required_env or key.startswith(("RAGANYTHING_", "LLM_", "EMBEDDING_", "PARSER", "PARSE_", "ENABLE_", "SUPPORTED_"))
+            if key in configured_env
         }
         env_report = {"loaded_files": loaded, "missing_files": missing, "effective_subset": redacted}
         return effective_env, env_report
@@ -792,6 +1131,28 @@ class Checker:
             else:
                 self.add("config", f"env:{key}", STATUS_OK, "Set")
 
+        for group_name, group in sorted(self.env_groups.items()):
+            if not isinstance(group, dict):
+                continue
+            keys = [str(item).strip() for item in as_list(group.get("keys", [])) if str(item).strip()]
+            present = [key for key in keys if key in env and env.get(key) not in {None, ""}]
+            required = bool(group.get("required", False))
+            if required and len(present) < len(keys):
+                missing = sorted(set(keys) - set(present))
+                self.add(
+                    "config",
+                    f"env_group:{group_name}",
+                    STATUS_FAIL,
+                    f"{len(present)}/{len(keys)} keys set; missing {', '.join(missing)}",
+                    required=True,
+                )
+            else:
+                status = STATUS_OK if present else STATUS_SKIP
+                detail = f"{len(present)}/{len(keys)} keys set"
+                if group.get("description"):
+                    detail = f"{detail} - {group.get('description')}"
+                self.add("config", f"env_group:{group_name}", status, detail)
+
         parser = env.get("PARSER", "mineru").strip().lower()
         if parser not in {"mineru", "docling", "paddleocr"}:
             self.add(
@@ -818,33 +1179,83 @@ class Checker:
         else:
             self.add("config", "PARSE_METHOD", STATUS_OK, method)
 
-        context_mode = env.get("CONTEXT_MODE")
-        if context_mode and context_mode.strip().lower() not in {"page", "chunk", "token"}:
-            self.add("config", "CONTEXT_MODE", STATUS_WARN, f"Unexpected context mode '{context_mode}'")
+        enum_config = self.env_validation.get("enums", {})
+        for key, choices in sorted(enum_config.items()):
+            if key not in env:
+                continue
+            allowed = {str(item) for item in as_list(choices)}
+            value = str(env[key]).strip()
+            if value not in allowed and value.lower() not in {item.lower() for item in allowed}:
+                self.add("config", key, STATUS_FAIL, f"Expected one of {sorted(allowed)}, got '{value}'")
+            else:
+                self.add("config", key, STATUS_OK, value)
 
-        numeric_minimums = {
-            "MAX_CONCURRENT_FILES": 1,
-            "CONTEXT_WINDOW": 0,
-            "MAX_CONTEXT_TOKENS": 1,
-            "MAX_ASYNC": 1,
-            "EMBEDDING_DIM": 1,
-        }
+        for key in sorted(str(item) for item in as_list(self.env_validation.get("booleans", []))):
+            if key not in env:
+                continue
+            normalized = str(env[key]).strip().lower()
+            if normalized not in {"1", "0", "true", "false", "yes", "no", "y", "n", "on", "off"}:
+                self.add("config", key, STATUS_FAIL, f"Expected boolean, got '{env[key]}'")
+
+        for key in sorted(str(item) for item in as_list(self.env_validation.get("urls", []))):
+            if key not in env or not str(env[key]).strip():
+                continue
+            value = str(env[key]).strip()
+            parsed = urlparse(value)
+            if key == "REDIS_URI":
+                valid = parsed.scheme in {"redis", "rediss"} and bool(parsed.netloc)
+            elif key == "NEO4J_URI":
+                valid = parsed.scheme in {"neo4j", "neo4j+s", "bolt", "bolt+s"} and bool(parsed.netloc)
+            elif key == "MILVUS_URI":
+                valid = (parsed.scheme in {"http", "https", "tcp"} and bool(parsed.netloc)) or value.startswith("./")
+            else:
+                valid = has_valid_url(value)
+            self.add("config", key, STATUS_OK if valid else STATUS_WARN, "URL syntax looks valid" if valid else f"Unexpected URL/URI: {value}")
+
+        for key in sorted(str(item) for item in as_list(self.env_validation.get("comma_lists", []))):
+            if key not in env:
+                continue
+            values = [item.strip() for item in str(env[key]).split(",") if item.strip()]
+            status = STATUS_OK if values else STATUS_WARN
+            self.add("config", key, status, f"{len(values)} item(s)")
+
+        numeric_minimums = self.env_validation.get("numeric_minimums", {})
         for key, minimum in numeric_minimums.items():
             if key not in env:
                 continue
             try:
                 value = int(str(env[key]))
+                minimum_value = int(minimum)
             except ValueError:
                 self.add("config", key, STATUS_FAIL, f"Expected integer, got '{env[key]}'")
                 continue
-            if value < minimum:
-                self.add("config", key, STATUS_FAIL, f"Expected >= {minimum}, got {value}")
+            if value < minimum_value:
+                self.add("config", key, STATUS_FAIL, f"Expected >= {minimum_value}, got {value}")
             else:
                 self.add("config", key, STATUS_OK, str(value))
 
-        for left, right in [
-            ("RAGANYTHING_PUBLIC_ASSET_BASE_URL", "RAGANYTHING_PUBLIC_ASSET_STRIP_PREFIX")
-        ]:
+        numeric_ranges = self.env_validation.get("numeric_ranges", {})
+        for key, bounds in numeric_ranges.items():
+            if key not in env:
+                continue
+            values = as_list(bounds)
+            if len(values) != 2:
+                continue
+            try:
+                value = float(str(env[key]))
+                low = float(values[0])
+                high = float(values[1])
+            except ValueError:
+                self.add("config", key, STATUS_FAIL, f"Expected number, got '{env[key]}'")
+                continue
+            status = STATUS_OK if low <= value <= high else STATUS_FAIL
+            self.add("config", key, status, f"{value} in range [{low}, {high}]" if status == STATUS_OK else f"Expected [{low}, {high}], got {value}")
+
+        for pair in as_list(self.env_validation.get("paired", [])):
+            items = as_list(pair)
+            if len(items) != 2:
+                continue
+            left, right = str(items[0]), str(items[1])
             has_left = bool(env.get(left))
             has_right = bool(env.get(right))
             if has_left != has_right:
@@ -1104,16 +1515,198 @@ class Checker:
                     remediation="Install with: pip install 'raganything[markdown]'",
                 )
 
+    def check_cli_manifest(self, discovered: dict[str, Any]) -> None:
+        for cli_name, manifest in sorted(self.cli_manifest.items()):
+            if not isinstance(manifest, dict):
+                continue
+            info = discovered.get("cli", {}).get(cli_name, {})
+            if not info:
+                self.add("cli", cli_name, STATUS_WARN, "CLI source was not discovered")
+                continue
+            self.add(
+                "cli",
+                cli_name,
+                STATUS_OK,
+                f"{manifest.get('module', cli_name)} exposes {len(info.get('arguments', []))} argument(s)",
+            )
+            choices_by_arg = info.get("choices", {})
+            for arg_name, discovered_choices in sorted(choices_by_arg.items()):
+                manifest_key = arg_name.lstrip("-").replace("-", "_") + "_choices"
+                configured_choices = as_list(manifest.get(manifest_key, []))
+                if not configured_choices:
+                    self.add(
+                        "cli",
+                        f"{cli_name}:{arg_name}:choices",
+                        STATUS_WARN,
+                        f"Choices discovered but not declared in config: {', '.join(discovered_choices)}",
+                    )
+                    continue
+                missing = sorted(set(discovered_choices) - {str(item) for item in configured_choices})
+                self.add(
+                    "cli",
+                    f"{cli_name}:{arg_name}:choices",
+                    STATUS_OK if not missing else STATUS_FAIL,
+                    "Choices covered" if not missing else f"Missing choices: {', '.join(missing)}",
+                    required=bool(missing),
+                )
+
+            for tool_name in as_list(manifest.get("optional_tools", [])):
+                command = self.commands.get(str(tool_name), [str(tool_name), "--version"])
+                ok, output, _ = run_command([str(item) for item in as_list(command)], self.timeout)
+                self.add(
+                    "cli",
+                    f"optional_tool:{tool_name}",
+                    STATUS_OK if ok else STATUS_WARN,
+                    output if output else f"{tool_name} command available",
+                    remediation=f"Install {tool_name} if you need this CLI method.",
+                )
+
+    def check_exports_and_api(self, discovered: dict[str, Any]) -> None:
+        discovered_exports = set(discovered.get("exports", {}).get("symbols", []))
+        for group_name, group in sorted(self.exports_manifest.items()):
+            if not isinstance(group, dict):
+                continue
+            symbols = {str(item) for item in as_list(group.get("symbols", []))}
+            required = bool(group.get("required", False))
+            missing = sorted(symbols - discovered_exports)
+            self.add(
+                "exports",
+                group_name,
+                self.required_status(not missing, required),
+                "All symbols discovered" if not missing else f"Missing exported symbols: {', '.join(missing)}",
+                required=required,
+            )
+
+        discovered_methods = {
+            method
+            for methods in discovered.get("public_api", {}).values()
+            for method in methods
+        }
+        for group_name, group in sorted(self.api_manifest.items()):
+            if not isinstance(group, dict):
+                continue
+            methods = {str(item) for item in as_list(group.get("methods", []))}
+            present = sorted(methods & discovered_methods)
+            missing = sorted(methods - discovered_methods)
+            status = STATUS_OK if not missing else STATUS_WARN
+            self.add(
+                "api",
+                group_name,
+                status,
+                f"{len(present)}/{len(methods)} configured method(s) discovered"
+                if not missing
+                else f"Missing configured method(s): {', '.join(missing)}",
+            )
+
+    def check_storage_backends(self, env: dict[str, str]) -> None:
+        declared = [str(item) for item in as_list(self.storage_backends.get("declared", []))]
+        if declared:
+            self.add("storage", "declared_backends", STATUS_OK, ", ".join(declared))
+
+        selector_values = [
+            str(env.get(key, ""))
+            for key in (
+                "LIGHTRAG_KV_STORAGE",
+                "LIGHTRAG_VECTOR_STORAGE",
+                "LIGHTRAG_DOC_STATUS_STORAGE",
+                "LIGHTRAG_GRAPH_STORAGE",
+            )
+        ]
+        for name in declared:
+            backend = self.storage_backends.get(name, {})
+            if not isinstance(backend, dict):
+                continue
+            required_keys = [str(item) for item in as_list(backend.get("required_keys", []))]
+            selector_tokens = [str(item) for item in as_list(backend.get("selector_contains", []))]
+            selected = any(
+                token and token.lower() in value.lower()
+                for token in selector_tokens
+                for value in selector_values
+            )
+            configured = any(key in env and str(env.get(key, "")).strip() for key in required_keys)
+            if not selected and not configured:
+                self.add("storage", name, STATUS_SKIP, "Not selected/configured")
+                continue
+            missing = [
+                key
+                for key in required_keys
+                if key not in env or is_placeholder(env.get(key), self.placeholders)
+            ]
+            self.add(
+                "storage",
+                name,
+                STATUS_OK if not missing else STATUS_FAIL,
+                "Required storage keys are present" if not missing else f"Missing/placeholder keys: {', '.join(missing)}",
+                required=selected,
+            )
+
+    def check_provider_tools(self, env: dict[str, str]) -> None:
+        bindings = {
+            str(env.get("LLM_BINDING", "")).lower(),
+            str(env.get("EMBEDDING_BINDING", "")).lower(),
+        }
+        if "ollama" in bindings or any(key.startswith("OLLAMA_") for key in env):
+            command = [str(item) for item in as_list(self.commands.get("ollama", ["ollama", "list"]))]
+            ok, output, _ = run_command(command, self.timeout)
+            self.add(
+                "provider",
+                "ollama_cli",
+                STATUS_OK if ok else STATUS_WARN,
+                output if output else "ollama CLI is available",
+                remediation="Install Ollama and pull the configured embedding/LLM models.",
+            )
+
+    def check_smoke_manifest(self) -> None:
+        smoke = self.config.get("smoke_tests", {})
+        if not smoke:
+            return
+        enabled = [name for name, value in smoke.items() if bool(value)]
+        disabled = [name for name, value in smoke.items() if not bool(value)]
+        self.add(
+            "smoke",
+            "manifest",
+            STATUS_OK,
+            f"enabled={', '.join(enabled) if enabled else 'none'}; disabled={len(disabled)}",
+        )
+        if smoke.get("import_package_exports", False):
+            symbols = sorted(self.configured_export_symbols())
+            import_lines = [
+                "import importlib",
+                "module = importlib.import_module('raganything')",
+                f"symbols = {symbols!r}",
+                "missing = [name for name in symbols if not hasattr(module, name)]",
+                "assert not missing, missing",
+            ]
+            ok, output = python_import_check(
+                self.python,
+                "\n".join(import_lines),
+                self.timeout,
+                self.rag_dir,
+            )
+            self.add(
+                "smoke",
+                "import_package_exports",
+                STATUS_OK if ok else STATUS_WARN,
+                "Configured exports import successfully" if ok else output,
+                remediation="Install RAG-Anything dependencies before enabling import smoke as a hard gate.",
+            )
+
     def run(self) -> ToolReport:
         discovered = self.discover()
         self.check_project(discovered)
         self.check_discovery(discovered)
+        self.check_coverage_manifest(discovered)
         env, env_report = self.check_env_files()
         self.check_env_values(env)
         self.check_provider_config(env)
+        self.check_provider_tools(env)
         self.check_parsers(discovered, env)
         self.check_processors(discovered, env)
         self.check_format_features(discovered, env)
+        self.check_storage_backends(env)
+        self.check_cli_manifest(discovered)
+        self.check_exports_and_api(discovered)
+        self.check_smoke_manifest()
         return ToolReport(
             generated_at_epoch=time.time(),
             project_root=str(self.project_root),
@@ -1145,10 +1738,20 @@ def print_report(report: ToolReport) -> None:
     parsers = discovered.get("parsers", {}).get("names", [])
     processors = sorted(discovered.get("processors", {}).keys())
     extras = sorted(discovered.get("pyproject", {}).get("optional_dependencies", {}).keys())
+    env_keys = discovered.get("env_surface", {}).get("all_keys", [])
+    cli = discovered.get("cli", {})
+    exports = discovered.get("exports", {}).get("symbols", [])
     print("Offered by RAG-Anything:")
     print(f"  Parsers:     {', '.join(parsers) if parsers else 'none discovered'}")
     print(f"  Processors:  {', '.join(processors) if processors else 'none discovered'}")
     print(f"  Extras:      {', '.join(extras) if extras else 'none discovered'}")
+    print(f"  Env keys:    {len(env_keys)} discovered")
+    if cli:
+        cli_summary = ", ".join(
+            f"{name}:{len(info.get('arguments', []))}" for name, info in sorted(cli.items())
+        )
+        print(f"  CLI:         {cli_summary}")
+    print(f"  Exports:     {len(exports)} discovered")
     print()
 
     current_category = ""
