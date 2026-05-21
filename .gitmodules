@@ -1,0 +1,3 @@
+[submodule "RAG-Anything"]
+	path = RAG-Anything
+	url = https://github.com/HKUDS/RAG-Anything.git
