@@ -20,6 +20,7 @@ build/
 # Logs and temporary files
 *.log
 *.tmp
+reports/
 ~$*
 
 # OS/editor files
