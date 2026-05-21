@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Logs and temporary files
+*.log
+*.tmp
+~$*
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
