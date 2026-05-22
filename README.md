@@ -14,4 +14,10 @@ Run the checker:
 .\scripts\check-rag-tools.ps1 -ReportOnly
 ```
 
+Run the visual console dashboard:
+
+```powershell
+.\scripts\show-rag-console.ps1 -ReportOnly
+```
+
 See `docs/rag-wrapper.md` for configuration and runtime setup details.

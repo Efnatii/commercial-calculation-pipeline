@@ -15,7 +15,10 @@ manifest in `configs/rag-tool-check.toml`.
 - `configs/rag-runtime.env.example` - public template for a runtime `.env`
   matching the coverage manifest.
 - `tools/rag_tool_check.py` - dependency-free Python checker.
+- `tools/rag_visual_console.py` - visual console dashboard built on the same
+  checker report.
 - `scripts/check-rag-tools.ps1` - Windows launcher.
+- `scripts/show-rag-console.ps1` - Windows launcher for the visual dashboard.
 
 ## Run
 
@@ -35,6 +38,18 @@ Direct Python form:
 
 ```powershell
 python tools\rag_tool_check.py --config configs\rag-tool-check.toml
+```
+
+Visual dashboard:
+
+```powershell
+.\scripts\show-rag-console.ps1 -ReportOnly
+```
+
+Use `-Plain` when a terminal does not render ANSI colors cleanly:
+
+```powershell
+.\scripts\show-rag-console.ps1 -ReportOnly -Plain
 ```
 
 The JSON report is written to `reports/rag-tool-check.json` by default. The
