@@ -554,6 +554,67 @@ arguments = [
 method_choices = ["auto", "weasyprint", "pandoc", "pandoc_system"]
 optional_tools = ["pandoc"]
 
+[cli.examples_batch_dry_run_example]
+module = "examples.batch_dry_run_example"
+description = "Example dry-run batch parser script"
+arguments = ["paths", "--parser", "--output", "--recursive"]
+parser_choices = ["mineru", "docling", "paddleocr"]
+
+[cli.examples_image_format_test]
+module = "examples.image_format_test"
+description = "Image parsing example/test script"
+arguments = ["--file", "--check-pillow"]
+
+[cli.examples_insert_content_list_example]
+module = "examples.insert_content_list_example"
+description = "Insert content-list example script"
+arguments = ["--working_dir", "--api-key", "--base-url"]
+
+[cli.examples_modalprocessors_example]
+module = "examples.modalprocessors_example"
+description = "Modal processor example script"
+arguments = ["--api-key", "--base-url", "--working-dir"]
+
+[cli.examples_office_document_test]
+module = "examples.office_document_test"
+description = "Office document parsing example/test script"
+arguments = ["--file", "--check-libreoffice"]
+
+[cli.examples_raganything_example]
+module = "examples.raganything_example"
+description = "General RAGAnything example script"
+arguments = ["file_path", "--working_dir", "--output", "--api-key", "--base-url", "--parser"]
+
+[cli.examples_text_format_test]
+module = "examples.text_format_test"
+description = "Text parsing example/test script"
+arguments = ["--file", "--check-reportlab"]
+
+[cli.reproduce_index]
+module = "reproduce.index"
+description = "Reproduce indexing script"
+arguments = ["file_path", "--working_dir", "--output", "--api-key", "--base-url", "--parser"]
+
+[cli.reproduce_llm_answer_evaluator]
+module = "reproduce.llm_answer_evaluator"
+description = "Reproduce answer evaluation script"
+arguments = [
+  "--rag-results-file",
+  "--rag-results-files",
+  "--qa-data-dir",
+  "--output-dir",
+  "--api-key",
+  "--base-url",
+  "--evaluation-type",
+  "--max-evaluations",
+]
+evaluation_type_choices = ["accuracy_only", "comprehensive"]
+
+[cli.reproduce_query]
+module = "reproduce.query"
+description = "Reproduce query script"
+arguments = ["file_path", "--working_dir", "--output", "--api-key", "--base-url", "--parser"]
+
 [api.raganything]
 description = "Main RAGAnything class and mixin methods"
 methods = [
@@ -642,6 +703,96 @@ methods = [
   "get_prompt_language",
   "reset_prompts",
   "get_available_languages",
+]
+
+[api.package_public_surface]
+description = "Full public class/function/method names discovered across raganything/*.py"
+methods = [
+  "BaseModalProcessor",
+  "BatchMixin",
+  "BatchParser",
+  "BatchProcessingResult",
+  "CallbackManager",
+  "CircuitBreaker",
+  "ContextConfig",
+  "ContextExtractor",
+  "DocStatus",
+  "DoclingParser",
+  "EnhancedMarkdownConverter",
+  "EquationModalProcessor",
+  "GenericModalProcessor",
+  "ImageModalProcessor",
+  "MarkdownConfig",
+  "MetricsCallback",
+  "MineruExecutionError",
+  "MineruParser",
+  "PaddleOCRParser",
+  "Parser",
+  "ProcessingCallback",
+  "ProcessingEvent",
+  "ProcessorMixin",
+  "PromptRegistry",
+  "QueryMixin",
+  "RAGAnything",
+  "RAGAnythingConfig",
+  "TableModalProcessor",
+  "async_call",
+  "async_retry",
+  "attach_public_media_urls",
+  "clear_event_log",
+  "dispatch",
+  "enable_event_log",
+  "encode_image_to_base64",
+  "enrich_content_list_with_docx_equations",
+  "event_log",
+  "extract_context",
+  "extract_omml_equations",
+  "format_table_body",
+  "generate_description_only",
+  "get",
+  "get_equation_text_and_format",
+  "get_processor_for_type",
+  "get_processor_supports",
+  "get_table_body",
+  "get_version",
+  "insert_text_content",
+  "insert_text_content_with_multimodal_content",
+  "items",
+  "keys",
+  "mineru_parse_method",
+  "normalize_caption_list",
+  "omml_to_latex",
+  "on_batch_complete",
+  "on_batch_start",
+  "on_document_complete",
+  "on_document_error",
+  "on_multimodal_complete",
+  "on_multimodal_item_complete",
+  "on_multimodal_start",
+  "on_parse_complete",
+  "on_parse_error",
+  "on_parse_start",
+  "on_query_complete",
+  "on_query_error",
+  "on_query_start",
+  "on_text_insert_complete",
+  "on_text_insert_start",
+  "process_multimodal_content",
+  "public_url_for_local_path",
+  "record_failure",
+  "record_success",
+  "register",
+  "reset",
+  "retry",
+  "separate_content",
+  "set_content_source",
+  "snapshot",
+  "state",
+  "swap",
+  "to_dict",
+  "unregister",
+  "validate_image_file",
+  "values",
 ]
 
 [exports.core]

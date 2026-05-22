@@ -5,14 +5,24 @@ param(
     [switch]$Strict,
     [switch]$Color,
     [switch]$Plain,
+    [switch]$NoAnimations,
+    [switch]$Details,
     [switch]$ReportOnly,
-    [switch]$NoJsonReport
+    [switch]$NoJsonReport,
+    [switch]$NoPause
 )
 
 $ErrorActionPreference = "Stop"
 
+$Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+[Console]::InputEncoding = $Utf8NoBom
+[Console]::OutputEncoding = $Utf8NoBom
+$OutputEncoding = $Utf8NoBom
+$env:PYTHONUTF8 = "1"
+$env:PYTHONIOENCODING = "utf-8"
+
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$Dashboard = Join-Path $RepoRoot "tools\rag_visual_console.py"
+$Launcher = Join-Path $RepoRoot "tools\wrapper.py"
 $ConfigPath = if ([System.IO.Path]::IsPathRooted($Config)) {
     $Config
 } else {
@@ -20,7 +30,10 @@ $ConfigPath = if ([System.IO.Path]::IsPathRooted($Config)) {
 }
 
 $ArgsList = @(
-    $Dashboard,
+    $Launcher,
+    "rag-anything",
+    "visual",
+    "--",
     "--config", $ConfigPath,
     "--python", $Python
 )
@@ -34,6 +47,12 @@ if ($Color) {
 if ($Plain) {
     $ArgsList += "--plain"
 }
+if ($NoAnimations) {
+    $ArgsList += "--no-animations"
+}
+if ($Details) {
+    $ArgsList += "--details"
+}
 if ($ReportOnly) {
     $ArgsList += "--report-only"
 }
@@ -42,4 +61,13 @@ if ($NoJsonReport) {
 }
 
 & $Python @ArgsList
-exit $LASTEXITCODE
+$ExitCode = $LASTEXITCODE
+
+if (-not $NoPause) {
+    Write-Host ""
+    $PauseMessage = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String("0JPQvtGC0L7QstC+LiDQndCw0LbQvNC4IEVudGVyLCDRh9GC0L7QsdGLINC30LDQutGA0YvRgtGMINGN0YLQviDQvtC60L3Qvi4uLg=="))
+    Write-Host $PauseMessage -ForegroundColor DarkGray
+    [void][System.Console]::ReadLine()
+}
+
+exit $ExitCode

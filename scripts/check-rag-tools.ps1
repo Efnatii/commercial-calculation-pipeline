@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
-$Checker = Join-Path $RepoRoot "tools\rag_tool_check.py"
+$Launcher = Join-Path $RepoRoot "tools\wrapper.py"
 $ConfigPath = if ([System.IO.Path]::IsPathRooted($Config)) {
     $Config
 } else {
@@ -18,7 +18,10 @@ $ConfigPath = if ([System.IO.Path]::IsPathRooted($Config)) {
 }
 
 $ArgsList = @(
-    $Checker,
+    $Launcher,
+    "rag-anything",
+    "check",
+    "--",
     "--config", $ConfigPath,
     "--python", $Python
 )
