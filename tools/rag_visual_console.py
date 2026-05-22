@@ -349,7 +349,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--python", default=None, help="Python executable used for import checks.")
     parser.add_argument("--strict", action="store_true", help="Treat warnings as failures.")
-    parser.add_argument("--plain", action="store_true", help="Disable ANSI colors.")
+    parser.add_argument("--color", action="store_true", help="Enable ANSI colors. Disabled by default for Windows console compatibility.")
+    parser.add_argument("--plain", action="store_true", help="Force plain output without ANSI colors.")
     parser.add_argument("--no-json-report", action="store_true", help="Do not write the JSON checker report.")
     parser.add_argument("--report-only", action="store_true", help="Always exit 0.")
     return parser
@@ -368,7 +369,7 @@ def main(argv: list[str] | None = None) -> int:
         strict_override=args.strict,
     )
     report = checker.run()
-    palette = Palette(enabled=not args.plain and os.environ.get("NO_COLOR") is None)
+    palette = Palette(enabled=bool(args.color and not args.plain and os.environ.get("NO_COLOR") is None))
     print_visual_report(report, palette)
 
     if not args.no_json_report:

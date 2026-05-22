@@ -20,4 +20,7 @@ Run the visual console dashboard:
 .\scripts\show-rag-console.ps1 -ReportOnly
 ```
 
+ANSI colors are disabled by default for Windows console compatibility. Use
+`-Color` only in terminals that render ANSI codes correctly.
+
 See `docs/rag-wrapper.md` for configuration and runtime setup details.

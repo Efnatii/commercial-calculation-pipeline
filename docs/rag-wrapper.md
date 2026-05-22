@@ -46,10 +46,11 @@ Visual dashboard:
 .\scripts\show-rag-console.ps1 -ReportOnly
 ```
 
-Use `-Plain` when a terminal does not render ANSI colors cleanly:
+The dashboard uses plain text by default so Windows consoles do not show raw
+ANSI escape codes. Enable color only in terminals that render ANSI correctly:
 
 ```powershell
-.\scripts\show-rag-console.ps1 -ReportOnly -Plain
+.\scripts\show-rag-console.ps1 -ReportOnly -Color
 ```
 
 The JSON report is written to `reports/rag-tool-check.json` by default. The

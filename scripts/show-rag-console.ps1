@@ -3,6 +3,7 @@ param(
     [string]$Config = "configs/rag-tool-check.toml",
     [string]$Python = "python",
     [switch]$Strict,
+    [switch]$Color,
     [switch]$Plain,
     [switch]$ReportOnly,
     [switch]$NoJsonReport
@@ -26,6 +27,9 @@ $ArgsList = @(
 
 if ($Strict) {
     $ArgsList += "--strict"
+}
+if ($Color) {
+    $ArgsList += "--color"
 }
 if ($Plain) {
     $ArgsList += "--plain"
