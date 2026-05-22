@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from wrapper_modules.rag_anything.console.items import coverage_items, cli_items, format_items, parser_items, processor_items, provider_items, storage_items
+from wrapper_modules.rag_anything.console.items import coverage_items, cli_items, format_items, parser_items, processor_items, provider_items, smoke_items, storage_items
 from wrapper_modules.rag_anything.console.palette import FG_ACCENT, FG_FAIL, FG_OK, FG_SKIP, FG_WARN, Palette
 from wrapper_modules.rag_anything.console.text import names_line, print_rule, print_wrapped, status_mark, wrap_text, worst_status
 from wrapper_modules.rag_anything.core.models import STATUS_FAIL, STATUS_OK, STATUS_SKIP, STATUS_WARN
@@ -79,6 +79,7 @@ def print_verdict(report: Any, width: int, palette: Palette) -> None:
     format_warnings = [item for item in format_items(report) if item.status == STATUS_WARN]
     storage_skips = [item for item in storage_items(report) if item.status == STATUS_SKIP]
     coverage_status = worst_status([item.status for item in coverage_items(report)])
+    smoke_status = worst_status([item.status for item in smoke_items(report)])
 
     print_rule("ИТОГОВЫЙ ВЫВОД", width, palette)
     print(f"  {status_mark(coverage_status, palette)} {palette.strong('обвязка RAG покрывает текущий submodule')}")
@@ -86,6 +87,12 @@ def print_verdict(report: Any, width: int, palette: Palette) -> None:
         print_wrapped("Конфиг видит все найденные парсеры, модули, env-ключи, CLI-аргументы, API и экспорты.", width, indent="      ")
     else:
         print_wrapped("В покрытии есть разрыв: upstream RAG-Anything изменился, конфиг нужно обновить.", width, indent="      ")
+
+    print(f"  {status_mark(smoke_status, palette)} {palette.strong('реальные smoke-пробы RAG runtime')}")
+    if smoke_status == STATUS_OK:
+        print_wrapped("Быстрые безопасные runtime-пробы прошли: импорт, конфиг, объект RAGAnything, registry, callbacks, processor map, dry-run batch и CLI.", width, indent="      ")
+    else:
+        print_wrapped("Есть проблема не только в описании конфигурации, а в реальном Python-запуске RAG-Anything. Подробности смотри в блоке smoke-проверок.", width, indent="      ")
 
     if parser_failures or parser_warnings:
         names = names_line(parser_failures + parser_warnings)

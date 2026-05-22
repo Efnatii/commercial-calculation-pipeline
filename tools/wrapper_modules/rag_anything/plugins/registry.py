@@ -132,6 +132,12 @@ def _coverage_items(report: Any) -> list[Any]:
     return coverage_items(report)
 
 
+def _smoke_items(report: Any) -> list[Any]:
+    from wrapper_modules.rag_anything.console.items import smoke_items
+
+    return smoke_items(report)
+
+
 def _env_group_items(report: Any) -> list[Any]:
     from wrapper_modules.rag_anything.console.items import env_group_items
 
@@ -175,6 +181,11 @@ BUILTIN_DETAIL_CONSOLE_PANELS: tuple[BuiltinConsolePanelPlugin, ...] = (
         "coverage_detail",
         "Coverage/API/export details",
         _section("ПОКРЫТИЕ, API И ЭКСПОРТЫ", _coverage_items, limit=18),
+    ),
+    BuiltinConsolePanelPlugin(
+        "smoke_detail",
+        "Real runtime smoke checks",
+        _section("РЕАЛЬНЫЕ SMOKE-ПРОВЕРКИ", _smoke_items, limit=24),
     ),
     BuiltinConsolePanelPlugin(
         "env_groups_detail",

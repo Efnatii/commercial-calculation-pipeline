@@ -130,6 +130,8 @@ Examples:
 - Fail whenever RAG-Anything adds a new env key, package/example/reproduce CLI
   arg, export, optional extra, parser, processor, or public package API name:
   keep `coverage.require_full_coverage = true`.
+- Disable safe runtime probes only when you need a purely static audit:
+  set `execution.smoke_tests = false`.
 
 ## What It Checks
 
@@ -152,6 +154,16 @@ Examples:
   numeric, boolean, URL, path, enum, paired-key, and comma-list settings.
 - Placeholder secrets and incomplete public asset URL mapping.
 - Absence of repo-local MCP/plugin registration artifacts.
+- Real safe smoke probes: package import and exports, `RAGAnythingConfig`
+  creation, `RAGAnything.get_config_info()`, custom parser registry roundtrip,
+  processor support map, callback dispatch, prompt language manager,
+  `BatchParser` dry-run on a temporary TXT file, and `python -m ... --help` for
+  safe CLI entrypoints.
+
+The smoke probes are intentionally split from network/storage/full-ingest
+checks. Provider endpoint checks, external storage connection checks, and full
+sample ingestion stay disabled unless both the `[smoke_tests]` probe and the
+matching `execution.*_checks` switch are enabled.
 
 ## Coverage Gate
 

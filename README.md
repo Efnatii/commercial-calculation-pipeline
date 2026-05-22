@@ -8,6 +8,12 @@ This repo includes `HKUDS/RAG-Anything` as a git submodule and provides a
 full-coverage external tool/config checker around it. It does not connect
 RAG-Anything to Codex as an MCP server or plugin.
 
+The checker now has two layers: static coverage/config checks and safe real
+runtime smoke probes. The smoke layer actually imports RAG-Anything, creates
+config and wrapper objects, exercises parser registry/callback/processor APIs,
+runs a batch dry-run on a temporary TXT file, and starts safe CLI `--help`
+commands without using network services or external storage.
+
 The wrapper architecture is module-based:
 
 - `tools/wrapper_platform/` is the shared registry/launcher layer for external

@@ -10,6 +10,7 @@ from wrapper_modules.rag_anything.console.items import (
     parser_items,
     processor_items,
     provider_items,
+    smoke_items,
     storage_items,
 )
 from wrapper_modules.rag_anything.console.palette import FG_INFO, Palette
@@ -36,6 +37,7 @@ def print_decision_board(report: Any, width: int, palette: Palette) -> None:
         ("LLM и эмбеддинги", provider_items(report)),
         ("Хранилища", storage_items(report)),
         ("CLI инструменты", cli_items(report)),
+        ("Реальные smoke-пробы", smoke_items(report)),
     ]
     print_rule("СВОДКА ГОТОВНОСТИ", width, palette)
     for title, items in groups:
@@ -66,6 +68,7 @@ def print_now_available(report: Any, width: int, palette: Palette) -> None:
         ("парсеры", [item for item in parser_items(report) if item.status == STATUS_FAIL]),
         ("LLM и эмбеддинги", [item for item in provider_items(report) if item.status == STATUS_FAIL]),
         ("форматы/конвертеры", [item for item in format_items(report) if item.status == STATUS_FAIL]),
+        ("runtime smoke", [item for item in smoke_items(report) if item.status == STATUS_FAIL]),
     ]
     limited_groups = [
         ("парсеры", [item for item in parser_items(report) if item.status == STATUS_WARN]),
@@ -120,6 +123,10 @@ def print_help_lines(report: Any, width: int, palette: Palette) -> None:
     if provider_failures:
         names = names_line(provider_failures)
         actions.append((STATUS_FAIL, "LLM и эмбеддинги: поиск и ответы", f"Задать в .env: {names}."))
+
+    smoke_failure = next((item for item in smoke_items(report) if item.status == STATUS_FAIL), None)
+    if smoke_failure:
+        actions.append((STATUS_FAIL, "Runtime smoke: реальный импорт и запуск RAG", translate_detail(smoke_failure.reason or smoke_failure.detail)))
 
     docling = next((item for item in parser_items(report) if item.name == "docling" and item.status == STATUS_WARN), None)
     if docling:

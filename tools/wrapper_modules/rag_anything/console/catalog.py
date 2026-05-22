@@ -77,6 +77,24 @@ COVERAGE_NOTES = {
     "smoke:manifest": "Smoke-набор показывает, какие быстрые проверки включены, а какие выключены.",
 }
 
+SMOKE_NOTES = {
+    "manifest": "Сводка включённых реальных runtime-проб.",
+    "import_package_exports": "Проверяет, что пакет raganything импортируется и экспортирует заявленные символы.",
+    "config_instantiation": "Создаёт RAGAnythingConfig и проверяет базовые поля без сети и моделей.",
+    "rag_instance_config_info": "Создаёт объект RAGAnything и читает get_config_info без запуска парсинга.",
+    "parser_registry_roundtrip": "Регистрирует временный custom parser, получает его через registry и удаляет обратно.",
+    "processor_supports": "Вызывает карту поддерживаемых multimodal-процессоров image/table/equation/generic.",
+    "callback_dispatch": "Создаёт CallbackManager, отправляет событие и проверяет event log.",
+    "prompt_language_roundtrip": "Переключает prompt language manager в безопасном режиме и возвращает настройки.",
+    "batch_dry_run": "Создаёт временный TXT-файл и запускает BatchParser dry-run без реального парсинга.",
+    "cli_help:raganything.parser": "Реально запускает python -m raganything.parser --help.",
+    "cli_help:raganything.batch_parser": "Реально запускает python -m raganything.batch_parser --help.",
+    "cli_help:raganything.enhanced_markdown": "Реально запускает python -m raganything.enhanced_markdown --help.",
+    "provider_endpoint_probe": "Сетевая проверка endpoint провайдера; по умолчанию выключена.",
+    "storage_connection_probe": "Проверка подключения к внешним хранилищам; по умолчанию выключена.",
+    "sample_ingest": "Полная пробная вставка документа в LightRAG; по умолчанию выключена.",
+}
+
 ENV_GROUP_NOTES = {
     "age": "Apache AGE: графовое хранилище поверх PostgreSQL.",
     "auth": "Аутентификация: login, JWT, API key и whitelist.",
@@ -124,4 +142,5 @@ GROUP_NOTES = {
     "LLM и эмбеддинги": "Это слой поиска и ответов: LLM генерирует ответ, эмбеддинги строят индекс и поиск.",
     "Хранилища": "Дополнительные хранилища LightRAG. Они не считаются ошибкой, пока не выбраны в env.",
     "CLI инструменты": "Команды RAG-Anything, которые можно запускать напрямую из консоли.",
+    "Реальные smoke-пробы": "Проверяет не только описание возможностей, а быстрый фактический запуск RAG-Anything без сети и тяжёлого парсинга.",
 }

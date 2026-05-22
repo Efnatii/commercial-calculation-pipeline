@@ -5,9 +5,33 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Mapping
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def python_env(
+    extra_pythonpath: Path | None = None,
+    extra_env: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    env = os.environ.copy()
+    env["NO_COLOR"] = "1"
+    env["PYTHON_COLORS"] = "0"
+    env["TERM"] = "dumb"
+    env["PYTHONUTF8"] = "1"
+    env["PYTHONIOENCODING"] = "utf-8"
+    if extra_pythonpath is not None:
+        old = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = str(extra_pythonpath) + (os.pathsep + old if old else "")
+    if extra_env:
+        env.update({str(key): str(value) for key, value in extra_env.items()})
+    return env
+
+
 def run_command(
-    command: list[str], timeout_seconds: int, cwd: Path | None = None
+    command: list[str],
+    timeout_seconds: int,
+    cwd: Path | None = None,
+    env: Mapping[str, str] | None = None,
 ) -> tuple[bool, str, int | None]:
     try:
         result = subprocess.run(
@@ -16,6 +40,7 @@ def run_command(
             capture_output=True,
             text=True,
             timeout=timeout_seconds,
+            env=dict(env) if env is not None else None,
             encoding="utf-8",
             errors="replace",
         )
@@ -59,13 +84,7 @@ def python_import_check(
         f"{import_statement}\n"
         "print('ok')\n"
     )
-    env = os.environ.copy()
-    env["NO_COLOR"] = "1"
-    env["PYTHON_COLORS"] = "0"
-    env["TERM"] = "dumb"
-    if extra_pythonpath is not None:
-        old = env.get("PYTHONPATH", "")
-        env["PYTHONPATH"] = str(extra_pythonpath) + (os.pathsep + old if old else "")
+    env = python_env(extra_pythonpath)
     try:
         result = subprocess.run(
             [python, "-c", code],
@@ -83,9 +102,39 @@ def python_import_check(
     if result.returncode == 0:
         return True, (result.stdout or "").strip()
     return False, compact_error_output((result.stderr or result.stdout) or "")
+
+
+def python_code_check(
+    python: str,
+    code: str,
+    timeout_seconds: int,
+    extra_pythonpath: Path | None = None,
+    cwd: Path | None = None,
+    extra_env: Mapping[str, str] | None = None,
+) -> tuple[bool, str]:
+    try:
+        result = subprocess.run(
+            [python, "-c", code],
+            cwd=str(cwd) if cwd else None,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            env=python_env(extra_pythonpath, extra_env),
+            encoding="utf-8",
+            errors="replace",
+        )
+    except FileNotFoundError:
+        return False, f"Python executable not found: {python}"
+    except subprocess.TimeoutExpired:
+        return False, f"Python smoke check timed out after {timeout_seconds}s"
+    if result.returncode == 0:
+        return True, (result.stdout or "").strip()
+    return False, compact_error_output((result.stderr or result.stdout) or "")
 __all__ = [
+    "python_env",
     "run_command",
     "compact_error_output",
     "run_first_success",
     "python_import_check",
+    "python_code_check",
 ]

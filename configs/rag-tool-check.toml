@@ -13,7 +13,8 @@ include_process_env = true
 command_timeout_seconds = 20
 network_checks = false
 storage_connection_checks = false
-smoke_tests = false
+sample_ingest_checks = false
+smoke_tests = true
 
 [coverage]
 # When true, the checker compares this manifest against the current submodule.
@@ -816,12 +817,36 @@ required = false
 symbols = ["set_prompt_language", "get_prompt_language", "reset_prompts", "register_prompt_language", "get_available_languages"]
 
 [smoke_tests]
-# Smoke tests are covered by config but disabled by default because they can
-# invoke heavy models, network endpoints, or filesystem conversions.
-parser_install_check = false
-batch_dry_run = false
-markdown_backend_info = false
+# Safe smoke tests run real RAG-Anything Python/CLI code without network calls,
+# model calls, storage connections, or heavy document parsing.
+required = [
+  "import_package_exports",
+  "config_instantiation",
+  "rag_instance_config_info",
+  "parser_registry_roundtrip",
+  "processor_supports",
+  "callback_dispatch",
+  "prompt_language_roundtrip",
+  "batch_dry_run",
+  "cli_help",
+]
 import_package_exports = true
+config_instantiation = true
+rag_instance_config_info = true
+parser_registry_roundtrip = true
+processor_supports = true
+callback_dispatch = true
+prompt_language_roundtrip = true
+batch_dry_run = true
+cli_help = true
+cli_help_modules = [
+  "raganything.parser",
+  "raganything.batch_parser",
+  "raganything.enhanced_markdown",
+]
+
+# Disabled by default: these probes intentionally touch external services or
+# perform full ingestion. Turn on the matching execution.* switch before use.
 provider_endpoint_probe = false
 storage_connection_probe = false
 sample_ingest = false

@@ -13,6 +13,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "include_process_env": True,
         "command_timeout_seconds": 20,
         "network_checks": False,
+        "storage_connection_checks": False,
+        "sample_ingest_checks": False,
+        "smoke_tests": True,
     },
     "policy": {
         "strict": False,

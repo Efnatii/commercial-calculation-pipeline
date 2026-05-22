@@ -10,6 +10,7 @@ from wrapper_modules.rag_anything.console.catalog import (
     PARSER_NOTES,
     PROCESSOR_NOTES,
     PROVIDER_NOTES,
+    SMOKE_NOTES,
     STORAGE_NOTES,
 )
 from wrapper_modules.rag_anything.console.text import worst_status
@@ -134,12 +135,24 @@ def cli_items(report: Any) -> list[VisualItem]:
 
 def coverage_items(report: Any) -> list[VisualItem]:
     items: list[VisualItem] = []
-    for category in ("coverage", "exports", "api", "smoke"):
+    for category in ("coverage", "exports", "api"):
         for result in results_by_category(report, category):
-            if category == "smoke" and result.name != "manifest":
-                continue
             key = f"{category}:{result.name}"
             items.append(VisualItem(key, result.status, result.detail, result.remediation, COVERAGE_NOTES.get(key, "")))
+    return items
+
+def smoke_items(report: Any) -> list[VisualItem]:
+    items: list[VisualItem] = []
+    for result in results_by_category(report, "smoke"):
+        items.append(
+            VisualItem(
+                result.name,
+                result.status,
+                result.detail,
+                result.remediation,
+                SMOKE_NOTES.get(result.name, ""),
+            )
+        )
     return items
 
 def summary_status(report: Any, pairs: list[tuple[str, str]]) -> str:
@@ -170,7 +183,6 @@ def coverage_summary_items(report: Any) -> list[VisualItem]:
         ),
         VisualItem("публичный API", summary_status(report, [("coverage", "public_api")]), "coverage"),
         VisualItem("экспорты пакета", summary_status(report, [("coverage", "exports")]), "coverage"),
-        VisualItem("smoke-проверки", summary_status(report, [("smoke", "manifest")]), "coverage"),
     ]
 
 def env_group_summary_items(report: Any) -> list[VisualItem]:
@@ -217,6 +229,6 @@ def status_counts(items: list[VisualItem]) -> tuple[int, int, int, int]:
 
 __all__ = [
     "result_map", "results_by_category", "find_result", "env_group_items", "parser_items", "processor_items",
-    "format_items", "provider_items", "storage_items", "cli_items", "coverage_items", "summary_status",
+    "format_items", "provider_items", "storage_items", "cli_items", "coverage_items", "smoke_items", "summary_status",
     "coverage_summary_items", "env_group_summary_items", "group_rows", "status_counts",
 ]

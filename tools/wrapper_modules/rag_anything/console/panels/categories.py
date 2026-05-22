@@ -10,6 +10,7 @@ from wrapper_modules.rag_anything.console.items import (
     parser_items,
     processor_items,
     provider_items,
+    smoke_items,
     storage_items,
 )
 from wrapper_modules.rag_anything.console.palette import Palette
@@ -98,11 +99,23 @@ def print_category_breakdown(report: Any, width: int, palette: Palette) -> None:
         "ПОКРЫТИЕ ОБВЯЗКИ",
         coverage,
         "Контроль, что внешний конфиг не отстал от текущего кода RAG-Anything.",
-        "парсеры, мультимодальные модули, дополнительные зависимости, env-переменные, CLI-аргументы, публичный API, экспорты пакета, smoke-проверки",
+        "парсеры, мультимодальные модули, дополнительные зависимости, env-переменные, CLI-аргументы, публичный API, экспорты пакета",
         width,
         palette,
         "Если в исходном RAG-Anything появится новая возможность, проверка покрытия должна подсветить её, пока конфиг не обновлён явно.",
         settings_label="покрывает",
+    )
+
+    smoke = smoke_items(report)
+    print_category_card(
+        "РЕАЛЬНЫЕ SMOKE-ПРОВЕРКИ",
+        smoke,
+        "Этот блок уже не просто сверяет наличие флагов. Он запускает быстрые безопасные куски RAG-Anything: импорт пакета, конфиг, объект RAGAnything, registry, callbacks, processor map, dry-run batch и CLI --help.",
+        "без сети, без моделей, без storage-подключений и без тяжёлого парсинга",
+        width,
+        palette,
+        "Если здесь ошибка, значит проблема воспроизводится в реальном Python-запуске. Если стоит НЕ ВКЛЮЧЕНО, проба намеренно отключена, потому что требует сети, внешнего хранилища или полного ingest.",
+        settings_label="запускает",
     )
 
     env_groups = env_group_summary_items(report)
