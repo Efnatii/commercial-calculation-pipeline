@@ -1,0 +1,846 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Codex Bridge — управление</title>
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="64x64"
+      href="./assets/codex-bridge-icon-64.png"
+    />
+    <link rel="apple-touch-icon" href="./assets/codex-bridge-icon-256.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <svg class="app-symbols" aria-hidden="true">
+      <symbol id="icon-run" viewBox="0 0 24 24">
+        <path d="M8 5v14l11-7-11-7Z" />
+      </symbol>
+      <symbol id="icon-stop" viewBox="0 0 24 24">
+        <path d="M7 7h10v10H7z" />
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8" />
+        <path d="M4 4v4h4" />
+        <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16" />
+        <path d="M16 16h4v4" />
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14" />
+      </symbol>
+      <symbol id="icon-save" viewBox="0 0 24 24">
+        <path d="M5 4h12l2 2v14H5z" />
+        <path d="M8 4v6h8V4M8 20v-6h8v6" />
+      </symbol>
+      <symbol id="icon-load" viewBox="0 0 24 24">
+        <path d="M12 4v12" />
+        <path d="m7 11 5 5 5-5" />
+        <path d="M5 20h14" />
+      </symbol>
+      <symbol id="icon-diamond" viewBox="0 0 24 24">
+        <path d="m12 3 9 9-9 9-9-9 9-9Z" />
+      </symbol>
+      <symbol id="icon-more" viewBox="0 0 24 24">
+        <path d="M5 12h.01M12 12h.01M19 12h.01" />
+      </symbol>
+    </svg>
+
+    <div class="app-shell">
+      <aside class="rail" aria-label="Навигация">
+        <div class="brand">
+          <img class="brand-logo" src="./assets/icon-pack/bridge.png" alt="" />
+          <div>
+            <strong>Codex Bridge</strong>
+            <span>Локальный сервер</span>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <button class="tab is-active" data-tab="run" title="Команды">
+            <img src="./assets/icon-pack/run.png" alt="" /><span>Команды</span>
+          </button>
+          <button class="tab" data-tab="jobs" title="Задачи">
+            <img src="./assets/icon-pack/terminal.png" alt="" /><span
+              >Задачи</span
+            >
+          </button>
+          <button class="tab" data-tab="workspaces" title="Среды">
+            <img src="./assets/icon-pack/workspace.png" alt="" /><span
+              >Среды</span
+            >
+          </button>
+          <button class="tab" data-tab="tokens" title="Токены">
+            <img src="./assets/icon-pack/token.png" alt="" /><span>Токены</span>
+          </button>
+          <button class="tab" data-tab="settings" title="Безопасность">
+            <img src="./assets/icon-pack/lan-lock.png" alt="" /><span
+              >Защита</span
+            >
+          </button>
+          <button class="tab" data-tab="audit" title="Журнал">
+            <img src="./assets/icon-pack/audit.png" alt="" /><span>Журнал</span>
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="windowbar">
+          <div class="window-title">
+            <img src="./assets/icon-pack/host.png" alt="" />
+            <div class="window-title-copy">
+              <h1>Управление Bridge</h1>
+              <span id="hostCaption"
+                >Клиент GitHub Pages + локальная консоль сервера</span
+              >
+            </div>
+            <div class="status-pill window-status" id="serverStatus">
+              <span class="pulse"></span>
+              <span>нет связи</span>
+            </div>
+          </div>
+          <div class="window-actions">
+            <button class="button primary" id="serverPowerButton">
+              <span class="icon"
+                ><svg><use href="#icon-run"></use></svg
+              ></span>
+              <span>Запуск</span>
+            </button>
+            <button class="button ghost" id="doctorButton">
+              <span class="icon"
+                ><svg><use href="#icon-diamond"></use></svg
+              ></span>
+              <span>Проверка</span>
+            </button>
+            <button class="button ghost" id="topRefreshButton">
+              <span class="icon"
+                ><svg><use href="#icon-refresh"></use></svg
+              ></span>
+              <span>Обновить</span>
+            </button>
+          </div>
+        </header>
+
+        <section class="host-ribbon" id="hostMetrics">
+          <div class="metric">
+            <span>Состояние сервера</span>
+            <strong>НЕТ СВЯЗИ</strong>
+          </div>
+          <div class="metric">
+            <span>Адрес</span>
+            <strong>не подключено</strong>
+          </div>
+          <div class="metric">
+            <span>Активные задачи</span>
+            <strong>0</strong>
+          </div>
+          <div class="metric">
+            <span>Среды</span>
+            <strong>0</strong>
+          </div>
+        </section>
+
+        <section class="connection-strip">
+          <div class="field user-name-field">
+            <label for="userNameInput">Имя пользователя</label>
+            <input
+              id="userNameInput"
+              spellcheck="false"
+              autocomplete="name"
+              placeholder="например: Егор"
+            />
+          </div>
+          <div class="connection-note">
+            <p>Цель подключения UI</p>
+            <strong>Каким Codex Bridge управляет эта страница</strong>
+            <span>
+              Нужно для GitHub Pages или другого компьютера в локальной сети.
+            </span>
+          </div>
+          <div class="field bridge-url-field">
+            <label for="bridgeUrl">Адрес сервера</label>
+            <input id="bridgeUrl" spellcheck="false" autocomplete="off" />
+          </div>
+          <div class="field token-field">
+            <label for="bridgeToken">Токен пользователя</label>
+            <div class="token-input-shell">
+              <input
+                id="bridgeToken"
+                type="password"
+                spellcheck="false"
+                autocomplete="off"
+                placeholder="локальный токен загрузится автоматически"
+              />
+              <button
+                class="token-visibility-button"
+                id="toggleBridgeTokenVisibility"
+                type="button"
+                aria-label="Показать токен"
+                aria-pressed="false"
+                title="Показать токен"
+              >
+                <img src="./assets/icon-pack/eye.png" alt="" />
+              </button>
+            </div>
+          </div>
+          <button class="button primary" id="connectButton">
+            <span class="icon"
+              ><svg><use href="#icon-refresh"></use></svg
+            ></span>
+            <span>Подключить</span>
+          </button>
+        </section>
+
+        <section class="view is-active" id="view-run">
+          <div class="command-layout">
+            <section class="panel composer-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Конструктор команды</p>
+                  <h2>Новая задача Codex</h2>
+                </div>
+              </div>
+              <select
+                id="workspaceSelect"
+                class="compact-select command-state-select"
+                hidden
+                aria-hidden="true"
+                tabindex="-1"
+              ></select>
+
+              <div class="json-editor-shell">
+                <div class="json-toolbar">
+                  <div>
+                    <p class="eyebrow">JSON-команда</p>
+                    <h3>Шаблон команды</h3>
+                  </div>
+                  <span class="field-status" id="commandJsonStatus"
+                    >шаблон готов</span
+                  >
+                </div>
+                <div
+                  class="json-viewer"
+                  id="commandJsonViewer"
+                  aria-label="JSON-команда с inline-редактированием"
+                ></div>
+                <details class="raw-json-details">
+                  <summary>Технический JSON</summary>
+                  <label class="field wide json-field" for="commandJsonInput">
+                    <span
+                      title="Редактируемое тело POST /api/jobs. Значения ниже отправляются в Codex Bridge как JSON."
+                    >
+                      Raw payload
+                    </span>
+                    <textarea
+                      id="commandJsonInput"
+                      class="json-textarea"
+                      spellcheck="false"
+                    ></textarea>
+                  </label>
+                </details>
+              </div>
+
+              <div class="field prompt-field">
+                <label for="promptInput">Запрос / ввод</label>
+                <textarea
+                  id="promptInput"
+                  spellcheck="true"
+                  placeholder="Опишите задачу Codex для выбранной среды"
+                ></textarea>
+              </div>
+
+              <div class="mode-grid">
+                <div class="field">
+                  <label for="modeFilterInput">Фильтр режимов</label>
+                  <input
+                    id="modeFilterInput"
+                    placeholder="exec, mcp, plugin..."
+                  />
+                </div>
+                <div class="field">
+                  <label for="modeSelect">Режим</label>
+                  <select id="modeSelect">
+                    <option value="exec">exec</option>
+                    <option value="exec-resume">exec-resume</option>
+                    <option value="resume">resume</option>
+                    <option value="fork">fork</option>
+                    <option value="review">review</option>
+                    <option value="doctor">doctor</option>
+                    <option value="apply">apply</option>
+                    <option value="update">update</option>
+                    <option value="completion">completion</option>
+                    <option value="debug-models">debug-models</option>
+                    <option value="debug-app-server-send-message-v2">
+                      debug-app-server-send-message-v2
+                    </option>
+                    <option value="debug-prompt-input">
+                      debug-prompt-input
+                    </option>
+                    <option value="cloud-list">cloud-list</option>
+                    <option value="cloud-status">cloud-status</option>
+                    <option value="cloud-diff">cloud-diff</option>
+                    <option value="cloud-exec">cloud-exec</option>
+                    <option value="cloud-apply">cloud-apply</option>
+                    <option value="sandbox-linux">sandbox-linux</option>
+                    <option value="sandbox-macos">sandbox-macos</option>
+                    <option value="sandbox-windows">sandbox-windows</option>
+                    <option value="exec-server-start">exec-server-start</option>
+                    <option value="mcp-server">mcp-server</option>
+                    <option value="app-open">app-open</option>
+                    <option value="app-server-start">app-server-start</option>
+                    <option value="app-server-proxy">app-server-proxy</option>
+                    <option value="app-server-generate-ts">
+                      app-server-generate-ts
+                    </option>
+                    <option value="app-server-generate-json-schema">
+                      app-server-generate-json-schema
+                    </option>
+                    <option value="login-status">login-status</option>
+                    <option value="login-api-key">login-api-key</option>
+                    <option value="login-access-token">
+                      login-access-token
+                    </option>
+                    <option value="login-device-auth">login-device-auth</option>
+                    <option value="logout">logout</option>
+                    <option value="mcp-list">mcp-list</option>
+                    <option value="mcp-get">mcp-get</option>
+                    <option value="mcp-add">mcp-add</option>
+                    <option value="mcp-remove">mcp-remove</option>
+                    <option value="mcp-login">mcp-login</option>
+                    <option value="mcp-logout">mcp-logout</option>
+                    <option value="plugin-list">plugin-list</option>
+                    <option value="plugin-add">plugin-add</option>
+                    <option value="plugin-remove">plugin-remove</option>
+                    <option value="plugin-marketplace-list">
+                      plugin-marketplace-list
+                    </option>
+                    <option value="plugin-marketplace-add">
+                      plugin-marketplace-add
+                    </option>
+                    <option value="plugin-marketplace-remove">
+                      plugin-marketplace-remove
+                    </option>
+                    <option value="plugin-marketplace-upgrade">
+                      plugin-marketplace-upgrade
+                    </option>
+                    <option value="features-list">features-list</option>
+                    <option value="features-enable">features-enable</option>
+                    <option value="features-disable">features-disable</option>
+                    <option value="app-daemon-version">
+                      app-daemon-version
+                    </option>
+                    <option value="app-daemon-bootstrap">
+                      app-daemon-bootstrap
+                    </option>
+                    <option value="app-daemon-start">app-daemon-start</option>
+                    <option value="app-daemon-restart">
+                      app-daemon-restart
+                    </option>
+                    <option value="app-daemon-stop">app-daemon-stop</option>
+                    <option value="app-daemon-enable-remote">
+                      app-daemon-enable-remote
+                    </option>
+                    <option value="app-daemon-disable-remote">
+                      app-daemon-disable-remote
+                    </option>
+                    <option value="remote-start">remote-start</option>
+                    <option value="remote-stop">remote-stop</option>
+                    <option value="help">help</option>
+                    <option value="raw">raw</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="sandboxSelect">Песочница</label>
+                  <select id="sandboxSelect">
+                    <option value="workspace-write">workspace-write</option>
+                    <option value="read-only">read-only</option>
+                    <option value="danger-full-access">
+                      danger-full-access
+                    </option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="advanced-controls">
+                <div class="field">
+                  <label for="modelInput">Модель</label>
+                  <input id="modelInput" placeholder="по умолчанию для среды" />
+                </div>
+                <div class="field">
+                  <label for="sessionInput">Аргумент</label>
+                  <input id="sessionInput" placeholder="session/name/topic" />
+                </div>
+                <div class="field">
+                  <label for="marketplaceInput">Маркетплейс</label>
+                  <input id="marketplaceInput" placeholder="необязательно" />
+                </div>
+                <div class="field">
+                  <label for="secretInput">Секрет</label>
+                  <input
+                    id="secretInput"
+                    type="password"
+                    autocomplete="off"
+                    placeholder="не сохраняется"
+                  />
+                </div>
+                <div class="field wide">
+                  <label for="imagesInput">Изображения</label>
+                  <input
+                    id="imagesInput"
+                    placeholder="пути через точку с запятой"
+                  />
+                </div>
+              </div>
+
+              <div class="composer-footer">
+                <label class="toggle">
+                  <input id="searchToggle" type="checkbox" />
+                  <span>Поиск</span>
+                </label>
+                <label class="toggle">
+                  <input id="lastToggle" type="checkbox" />
+                  <span>Последняя</span>
+                </label>
+                <label class="toggle">
+                  <input id="ephemeralToggle" type="checkbox" />
+                  <span>Временно</span>
+                </label>
+                <label class="toggle">
+                  <input id="skipGitToggle" type="checkbox" />
+                  <span>Без git-проверки</span>
+                </label>
+                <button class="button primary" id="runButton">
+                  <span class="icon"
+                    ><svg><use href="#icon-run"></use></svg
+                  ></span>
+                  <span>Запустить задачу</span>
+                </button>
+              </div>
+            </section>
+
+            <section class="panel live-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Живой поток событий</p>
+                  <h2 id="activeJobTitle">Нет активной задачи</h2>
+                </div>
+                <button class="button ghost" id="cancelButton" disabled>
+                  <span class="icon"
+                    ><svg><use href="#icon-stop"></use></svg
+                  ></span>
+                  <span>Остановить</span>
+                </button>
+              </div>
+              <pre id="logOutput" class="log-output"></pre>
+              <div class="stream-toolbar">
+                <span>Автопрокрутка</span>
+                <span id="streamCounter">Строк: 0</span>
+              </div>
+            </section>
+
+            <section class="panel side-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Запущенные задачи</p>
+                  <h2>Очередь</h2>
+                </div>
+                <button
+                  class="button ghost icon-only"
+                  id="refreshJobsButton"
+                  title="Обновить задачи"
+                >
+                  <span class="icon"
+                    ><svg><use href="#icon-refresh"></use></svg
+                  ></span>
+                </button>
+              </div>
+              <div class="mini-list" id="currentJobsPreview"></div>
+            </section>
+
+            <section class="panel side-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Изоляция сред</p>
+                  <h2>Контейнеры</h2>
+                </div>
+                <button
+                  class="button ghost icon-only"
+                  id="refreshWorkspacesButton"
+                  title="Обновить среды"
+                >
+                  <span class="icon"
+                    ><svg><use href="#icon-refresh"></use></svg
+                  ></span>
+                </button>
+              </div>
+              <div class="isolation-map">
+                <img src="./assets/icon-pack/lan-lock.png" alt="" />
+                <div id="workspaceMiniList" class="mini-list"></div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-jobs">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">История</p>
+                <h2>Задачи</h2>
+              </div>
+              <div class="job-user-tabs-shell">
+                <div
+                  class="job-user-tabs"
+                  id="jobUserTabs"
+                  aria-label="Открытые вкладки пользователей"
+                ></div>
+                <button
+                  class="button ghost icon-only job-user-plus"
+                  id="addJobUserTabButton"
+                  title="Добавить пользователя"
+                  type="button"
+                >
+                  <span class="icon"
+                    ><svg><use href="#icon-plus"></use></svg
+                  ></span>
+                </button>
+                <select
+                  class="job-user-picker"
+                  id="jobUserSelect"
+                  aria-label="Выбрать пользователя"
+                  hidden
+                ></select>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Режим</th>
+                    <th>Среда</th>
+                    <th>Статус</th>
+                    <th>Код</th>
+                    <th>Создана</th>
+                  </tr>
+                </thead>
+                <tbody id="jobsTable"></tbody>
+              </table>
+            </div>
+            <div class="jobs-history" id="jobsHistoryList"></div>
+            <div class="activity-timeline" id="activityTimeline"></div>
+          </section>
+        </section>
+
+        <section class="view" id="view-workspaces">
+          <div class="settings-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Контейнеры</p>
+                  <h2>Рабочие среды</h2>
+                </div>
+              </div>
+              <div id="workspaceCards" class="workspace-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Администрирование</p>
+                  <h2>Управление средой</h2>
+                </div>
+              </div>
+              <div class="workspace-form">
+                <div class="field">
+                  <label for="workspaceIdInput">ID</label>
+                  <input id="workspaceIdInput" placeholder="office-pc-01" />
+                </div>
+                <div class="field">
+                  <label for="workspaceNameInput">Название</label>
+                  <input id="workspaceNameInput" placeholder="Офисный ПК 01" />
+                </div>
+                <div class="field wide">
+                  <label for="workspaceOwnerInput">Владелец</label>
+                  <input
+                    id="workspaceOwnerInput"
+                    placeholder="имя пользователя"
+                    spellcheck="false"
+                  />
+                </div>
+                <div class="field wide">
+                  <label for="workspacePathInput">Путь</label>
+                  <input
+                    id="workspacePathInput"
+                    placeholder="C:\projects\workspace"
+                  />
+                </div>
+                <div class="field wide">
+                  <label for="workspaceCodexHomeInput">CODEX_HOME</label>
+                  <input
+                    id="workspaceCodexHomeInput"
+                    placeholder=".codex-bridge/workspaces/office-pc-01/codex-home"
+                  />
+                </div>
+                <div class="field">
+                  <label for="workspaceModelInput">Модель</label>
+                  <input id="workspaceModelInput" />
+                </div>
+                <div class="field">
+                  <label for="workspaceProfileInput">Профиль</label>
+                  <input id="workspaceProfileInput" />
+                </div>
+                <div class="field">
+                  <label for="workspaceProfileV2Input">Профиль v2</label>
+                  <input id="workspaceProfileV2Input" />
+                </div>
+                <div class="field">
+                  <label for="workspaceSandboxInput">Песочница</label>
+                  <select id="workspaceSandboxInput">
+                    <option value="workspace-write">workspace-write</option>
+                    <option value="read-only">read-only</option>
+                    <option value="danger-full-access">
+                      danger-full-access
+                    </option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label for="workspaceApprovalInput">Подтверждения</label>
+                  <select id="workspaceApprovalInput">
+                    <option value="never">never</option>
+                    <option value="on-request">on-request</option>
+                    <option value="untrusted">untrusted</option>
+                  </select>
+                </div>
+                <div class="field wide">
+                  <label for="workspaceDirsInput">Разрешенные доп. папки</label>
+                  <input
+                    id="workspaceDirsInput"
+                    placeholder="пути через точку с запятой"
+                  />
+                </div>
+                <div class="field wide">
+                  <label for="workspaceEnvInput"
+                    >Переменные окружения JSON</label
+                  >
+                  <textarea
+                    id="workspaceEnvInput"
+                    class="small-textarea"
+                    spellcheck="false"
+                  >
+{}</textarea
+                  >
+                </div>
+                <button
+                  class="button primary full wide"
+                  id="saveWorkspaceButton"
+                >
+                  <span class="icon"
+                    ><svg><use href="#icon-plus"></use></svg
+                  ></span>
+                  <span>Сохранить среду</span>
+                </button>
+                <div class="field wide">
+                  <label class="config-label" for="workspaceConfigInput">
+                    <span>config.toml среды CODEX_HOME</span>
+                    <span class="field-status" id="workspaceConfigStatus"
+                      >загрузка...</span
+                    >
+                  </label>
+                  <textarea
+                    id="workspaceConfigInput"
+                    class="config-textarea"
+                    spellcheck="false"
+                  ></textarea>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-tokens">
+          <div class="settings-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Доступ</p>
+                  <h2>Активные токены</h2>
+                </div>
+                <div class="panel-tools">
+                  <label class="sort-select" for="tokenSortSelect">
+                    <span>Сортировка</span>
+                    <select id="tokenSortSelect">
+                      <option value="active">Активные сверху</option>
+                      <option value="name">По названию</option>
+                      <option value="created_desc">Новые сверху</option>
+                      <option value="created_asc">Старые сверху</option>
+                    </select>
+                  </label>
+                  <button
+                    class="button ghost icon-only"
+                    id="refreshTokensButton"
+                    title="Обновить токены"
+                  >
+                    <span class="icon"
+                      ><svg><use href="#icon-refresh"></use></svg
+                    ></span>
+                  </button>
+                </div>
+              </div>
+              <div id="tokensList" class="token-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Выдача токена</p>
+                  <h2>Клиент GitHub Pages</h2>
+                </div>
+              </div>
+              <div class="field">
+                <label for="tokenName">Название</label>
+                <input id="tokenName" value="Пользователь LAN" />
+              </div>
+              <div class="field">
+                <label for="tokenWorkspaces">Среды</label>
+                <input
+                  id="tokenWorkspaces"
+                  value="*"
+                  placeholder="*, main, office-pc-01"
+                />
+              </div>
+              <div class="field">
+                <label for="tokenTtl">Срок, дней</label>
+                <input
+                  id="tokenTtl"
+                  type="number"
+                  min="1"
+                  placeholder="необязательно"
+                />
+              </div>
+              <div class="scope-row">
+                <label class="toggle"
+                  ><input type="checkbox" value="read" checked /><span
+                    >чтение</span
+                  ></label
+                >
+                <label class="toggle"
+                  ><input type="checkbox" value="run" checked /><span
+                    >запуск</span
+                  ></label
+                >
+                <label class="toggle"
+                  ><input type="checkbox" value="admin" /><span
+                    >админ</span
+                  ></label
+                >
+              </div>
+              <button class="button primary full" id="createTokenButton">
+                <span class="icon"
+                  ><svg><use href="#icon-plus"></use></svg
+                ></span>
+                <span>Выдать токен</span>
+              </button>
+              <pre id="createdToken" class="created-token"></pre>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <div class="settings-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Выполнение</p>
+                  <h2>Сведения о сервере</h2>
+                </div>
+              </div>
+              <dl class="facts" id="serverFacts"></dl>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <div>
+                  <p class="eyebrow">Управление Codex</p>
+                  <h2>Действия локального сервера</h2>
+                </div>
+              </div>
+              <div class="quick-actions">
+                <button class="button ghost" data-action="mcp-list">MCP</button>
+                <button class="button ghost" data-action="plugin-list">
+                  Плагины
+                </button>
+                <button class="button ghost" data-action="features-list">
+                  Функции
+                </button>
+                <button class="button ghost" data-action="app-daemon-version">
+                  Демон
+                </button>
+                <button
+                  class="button ghost"
+                  data-action="help"
+                  data-topic="codex"
+                >
+                  Справка
+                </button>
+              </div>
+              <pre class="created-token" id="doctorResult"></pre>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-audit">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Аудит</p>
+                <h2>Журнал событий</h2>
+              </div>
+              <div class="panel-tools">
+                <label class="sort-select" for="auditSortSelect">
+                  <span>Сортировка</span>
+                  <select id="auditSortSelect">
+                    <option value="ended_desc">Новые сверху</option>
+                    <option value="ended_asc">Старые сверху</option>
+                    <option value="mode">По режиму</option>
+                    <option value="status">По статусу</option>
+                    <option value="user">По пользователю</option>
+                  </select>
+                </label>
+                <button
+                  class="button ghost icon-only"
+                  id="refreshAuditButton"
+                  title="Обновить журнал"
+                >
+                  <span class="icon"
+                    ><svg><use href="#icon-refresh"></use></svg
+                  ></span>
+                </button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Режим</th>
+                    <th>Среда</th>
+                    <th>Статус</th>
+                    <th>Кто запустил</th>
+                    <th>Завершена</th>
+                  </tr>
+                </thead>
+                <tbody id="auditTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <datalist id="chatOptions"></datalist>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>

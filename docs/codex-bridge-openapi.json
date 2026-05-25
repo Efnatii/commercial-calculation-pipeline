@@ -1,0 +1,645 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Codex Bridge API",
+    "version": "1.0.0",
+    "description": "Local LAN bridge for running the already authenticated Codex CLI from a static browser UI or native WebView2 tray shell. LAN API callers use Codex Bridge bearer tokens by default; /health is unauthenticated."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:8765",
+      "description": "Local development bridge"
+    },
+    {
+      "url": "https://127.0.0.1:8765",
+      "description": "Local TLS bridge"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "security": [],
+        "summary": "Loopback bridge health check",
+        "responses": {
+          "200": {
+            "description": "Bridge process is reachable from loopback; LAN health is disabled by default"
+          }
+        }
+      }
+    },
+    "/api/status": {
+      "get": {
+        "summary": "Bridge runtime status",
+        "responses": {
+          "200": {
+            "description": "Config summary, Codex version, LAN URLs, workspaces, and recent in-memory jobs"
+          }
+        }
+      }
+    },
+    "/api/capabilities": {
+      "get": {
+        "summary": "Supported job modes, scopes, and limits",
+        "responses": {
+          "200": {
+            "description": "Capabilities document"
+          }
+        }
+      }
+    },
+    "/api/workspaces": {
+      "get": {
+        "summary": "List visible workspaces",
+        "responses": {
+          "200": {
+            "description": "Visible workspace list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create or update a workspace",
+        "description": "Requires admin scope.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkspaceUpsert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Workspace saved"
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspaceId}": {
+      "delete": {
+        "summary": "Remove a workspace from bridge config",
+        "description": "Requires admin scope. Does not delete workspace files.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deletion result"
+          }
+        }
+      }
+    },
+    "/api/workspaces/{workspaceId}/codex-config": {
+      "get": {
+        "summary": "Read workspace CODEX_HOME config.toml",
+        "description": "Requires admin scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Config text"
+          }
+        }
+      },
+      "post": {
+        "summary": "Write workspace CODEX_HOME config.toml",
+        "description": "Requires admin scope.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WorkspaceId"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["text"],
+                "properties": {
+                  "text": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Config saved"
+          }
+        }
+      }
+    },
+    "/api/local-user-token": {
+      "get": {
+        "summary": "Return the current machine bootstrap admin token",
+        "description": "Loopback-only endpoint for the local UI. It returns the server-start bootstrap admin token. The token is rotated every bridge process start and is saved to bootstrap-admin-token.txt.",
+        "responses": {
+          "200": {
+            "description": "Plaintext bootstrap admin token and public token metadata"
+          },
+          "403": {
+            "description": "Caller is not the local machine"
+          }
+        }
+      }
+    },
+    "/api/chats": {
+      "get": {
+        "summary": "List chats visible to the current user",
+        "description": "Chats are scoped by workspace and owner name. Admin tokens can list all chats.",
+        "parameters": [
+          {
+            "name": "workspace_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visible chat list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create or update a workspace chat",
+        "description": "Requires run scope for the selected workspace.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatUpsert"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Chat saved"
+          }
+        }
+      }
+    },
+    "/api/server/stop": {
+      "post": {
+        "summary": "Stop the local bridge process",
+        "description": "Loopback-only endpoint for the native/local UI. Requires admin scope and shuts down the Codex Bridge HTTP server after returning a response.",
+        "responses": {
+          "200": {
+            "description": "Server accepted the stop request"
+          },
+          "403": {
+            "description": "Caller is not the local machine or lacks admin scope"
+          }
+        }
+      }
+    },
+    "/api/tokens": {
+      "get": {
+        "summary": "List token metadata",
+        "description": "Requires admin scope.",
+        "responses": {
+          "200": {
+            "description": "Token metadata list; token secrets are never returned"
+          }
+        }
+      },
+      "post": {
+        "summary": "Issue a token",
+        "description": "Requires admin scope. Returns the token secret once.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Token created"
+          }
+        }
+      }
+    },
+    "/api/tokens/{tokenId}": {
+      "delete": {
+        "summary": "Revoke a token",
+        "description": "Requires admin scope.",
+        "parameters": [
+          {
+            "name": "tokenId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Revocation result"
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "get": {
+        "summary": "List visible jobs",
+        "responses": {
+          "200": {
+            "description": "In-memory job list"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a Codex job",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Job accepted"
+          }
+        }
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "summary": "Read persisted job metadata audit log",
+        "description": "Requires admin scope.",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent job metadata entries"
+          }
+        }
+      }
+    },
+    "/api/jobs/{jobId}": {
+      "get": {
+        "summary": "Get job status",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Job status"
+          }
+        }
+      }
+    },
+    "/api/jobs/{jobId}/events": {
+      "get": {
+        "summary": "Fetch buffered job events",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON event array"
+          }
+        }
+      }
+    },
+    "/api/jobs/{jobId}/stream": {
+      "get": {
+        "summary": "Stream job events as Server-Sent Events",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          },
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "text/event-stream"
+          }
+        }
+      }
+    },
+    "/api/jobs/{jobId}/cancel": {
+      "post": {
+        "summary": "Cancel a running job",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/JobId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cancellation result"
+          }
+        }
+      }
+    },
+    "/api/codex/doctor": {
+      "post": {
+        "summary": "Create a Codex doctor job",
+        "description": "Convenience endpoint equivalent to creating a job with mode `doctor`.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Doctor job accepted"
+          }
+        }
+      }
+    },
+    "/api/codex/review": {
+      "post": {
+        "summary": "Create a Codex review job",
+        "description": "Convenience endpoint equivalent to creating a job with mode `review`.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Review job accepted"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "parameters": {
+      "WorkspaceId": {
+        "name": "workspaceId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      },
+      "JobId": {
+        "name": "jobId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "WorkspaceUpsert": {
+        "type": "object",
+        "required": ["id", "path"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "description": "User name that owns this workspace. Non-admin users only see workspaces with their own owner name or unowned workspaces."
+          },
+          "path": {
+            "type": "string"
+          },
+          "codex_home": {
+            "type": "string"
+          },
+          "default_model": {
+            "type": "string"
+          },
+          "default_profile": {
+            "type": "string"
+          },
+          "default_profile_v2": {
+            "type": "string"
+          },
+          "default_sandbox": {
+            "type": "string",
+            "enum": ["read-only", "workspace-write", "danger-full-access"]
+          },
+          "approval_policy": {
+            "type": "string",
+            "enum": ["never", "on-request", "untrusted"]
+          },
+          "allowed_additional_dirs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ChatUpsert": {
+        "type": "object",
+        "required": ["workspace_id"],
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "chat_id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "session_id": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenCreate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["read", "run", "admin"]
+            }
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ttl_days": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "JobCreate": {
+        "type": "object",
+        "required": ["workspace_id", "mode"],
+        "properties": {
+          "workspace_id": {
+            "type": "string"
+          },
+          "chat_id": {
+            "type": "string",
+            "description": "Workspace chat id. Existing chat ids can carry a saved session_id for resume-style modes."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "app-daemon-bootstrap",
+              "app-daemon-disable-remote",
+              "app-daemon-enable-remote",
+              "app-daemon-restart",
+              "app-daemon-start",
+              "app-daemon-stop",
+              "app-daemon-version",
+              "app-open",
+              "app-server-generate-json-schema",
+              "app-server-generate-ts",
+              "app-server-proxy",
+              "app-server-start",
+              "apply",
+              "cloud-apply",
+              "cloud-diff",
+              "cloud-exec",
+              "cloud-list",
+              "cloud-status",
+              "completion",
+              "debug-app-server-send-message-v2",
+              "debug-models",
+              "debug-prompt-input",
+              "doctor",
+              "exec",
+              "exec-resume",
+              "exec-server-start",
+              "features-disable",
+              "features-enable",
+              "features-list",
+              "fork",
+              "help",
+              "login-access-token",
+              "login-api-key",
+              "login-device-auth",
+              "login-status",
+              "logout",
+              "mcp-add",
+              "mcp-get",
+              "mcp-list",
+              "mcp-login",
+              "mcp-logout",
+              "mcp-remove",
+              "mcp-server",
+              "plugin-add",
+              "plugin-list",
+              "plugin-marketplace-add",
+              "plugin-marketplace-list",
+              "plugin-marketplace-remove",
+              "plugin-marketplace-upgrade",
+              "plugin-remove",
+              "raw",
+              "remote-start",
+              "remote-stop",
+              "resume",
+              "review",
+              "sandbox-linux",
+              "sandbox-macos",
+              "sandbox-windows",
+              "update"
+            ]
+          },
+          "prompt": {
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 30
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  }
+}

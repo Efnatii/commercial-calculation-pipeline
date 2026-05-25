@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from wrapper_modules.rag_anything.core.config import as_list
-from wrapper_modules.rag_anything.core.models import STATUS_FAIL, STATUS_OK, STATUS_WARN
+from wrapper_modules.rag_anything.core.models import STATUS_FAIL, STATUS_OK, STATUS_SKIP, STATUS_WARN
 from wrapper_modules.rag_anything.core.process import python_import_check, run_command
 
 def check_parsers(checker: Any, discovered: dict[str, Any], env: dict[str, str]) -> None:
@@ -26,6 +26,14 @@ def check_parsers(checker: Any, discovered: dict[str, Any], env: dict[str, str])
         if parser_name == "mineru":
             command = as_list(checker.commands.get("mineru", ["mineru", "--version"]))
             ok, output, _ = run_command([str(item) for item in command], checker.timeout)
+            if not ok:
+                fallback = [checker.python, "-m", "mineru.cli.client", "--version"]
+                fallback_ok, fallback_output, _ = run_command(fallback, checker.timeout)
+                if fallback_ok:
+                    ok = True
+                    output = f"{' '.join(fallback)} -> {fallback_output}"
+                elif fallback_output:
+                    output = f"{output}; {' '.join(fallback)} -> {fallback_output}"
             checker.add(
                 "parser",
                 "mineru",
@@ -69,11 +77,19 @@ def check_parsers(checker: Any, discovered: dict[str, Any], env: dict[str, str])
                 remediation="Install with: pip install pypdfium2",
             )
             ok_paddle, output_paddle = python_import_check(checker.python, "import paddle  # noqa", checker.timeout)
+            paddle_status = checker.required_status(ok_paddle, is_required)
+            paddle_detail = "paddle import works" if ok_paddle else output_paddle
+            if not ok_paddle and not is_required:
+                paddle_status = STATUS_SKIP
+                paddle_detail = (
+                    f"{output_paddle}; PaddlePaddle is only required when "
+                    "parser='paddleocr' is selected or paddleocr is made a required parser."
+                )
             checker.add(
                 "parser",
                 "paddlepaddle_runtime",
-                checker.required_status(ok_paddle, is_required),
-                "paddle import works" if ok_paddle else output_paddle,
+                paddle_status,
+                paddle_detail,
                 required=is_required,
                 remediation="Install PaddlePaddle from https://www.paddlepaddle.org.cn/install/quick",
             )

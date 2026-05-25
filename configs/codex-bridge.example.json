@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "server": {
+    "host": "127.0.0.1",
+    "port": 8765,
+    "public_base_url": "http://127.0.0.1:8765",
+    "allowed_origins": [
+      "http://127.0.0.1:8765",
+      "http://localhost:8765",
+      "https://localhost"
+    ],
+    "allowed_origin_patterns": [
+      "https://*.github.io"
+    ],
+    "enable_private_network_cors": true,
+    "tls": {
+      "enabled": false,
+      "cert_file": "",
+      "key_file": ""
+    }
+  },
+  "runtime": {
+    "state_dir": ".codex-bridge",
+    "static_dir": "docs/codex-ui",
+    "codex_command": "codex",
+    "default_timeout_seconds": 3600,
+    "max_concurrent_jobs": 2
+  },
+  "codex": {
+    "default_model": "",
+    "default_profile": "",
+    "default_profile_v2": "",
+    "default_sandbox": "workspace-write",
+    "default_approval_policy": "never",
+    "search_enabled": false,
+    "extra_config": {}
+  },
+  "security": {
+    "require_api_tokens": true,
+    "allow_loopback_without_token": true,
+    "allow_loopback_admin_without_token": true,
+    "allow_lan_without_token": false,
+    "allow_lan_static_ui": false,
+    "allow_lan_health": false,
+    "no_auth_scopes": [],
+    "allow_danger_full_access": false,
+    "allow_raw_codex_args": false
+  },
+  "workspaces": [
+    {
+      "id": "main",
+      "name": "Текущий репозиторий",
+      "path": ".",
+      "codex_home": ".codex-bridge/workspaces/main/codex-home",
+      "default_model": "",
+      "default_profile": "",
+      "default_profile_v2": "",
+      "default_sandbox": "workspace-write",
+      "approval_policy": "never",
+      "allowed_additional_dirs": [],
+      "env": {},
+      "enabled": true
+    }
+  ]
+}

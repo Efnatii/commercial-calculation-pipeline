@@ -41,3 +41,79 @@ API/env/export diagnostics, or `-Plain -NoAnimations -NoPause` for log-friendly
 output.
 
 See `docs/rag-wrapper.md` for configuration and runtime setup details.
+
+## Codex Bridge
+
+This repo also includes a new `codex-bridge` wrapper module: one native Windows
+tray executable that runs a local HTTP bridge in the background, plus a static
+GitHub Pages UI for submitting Codex CLI jobs to one stronger LAN machine.
+
+Initialize and run it locally:
+
+```powershell
+.\scripts\start-codex-bridge.ps1 -Init
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765/ui
+```
+
+Build the one-file Windows executable:
+
+```powershell
+.\scripts\build-codex-bridge-exe.ps1
+```
+
+Run the native tray/server app:
+
+```powershell
+.\dist\codex-bridge.exe
+```
+
+Run the native tray/server app hidden in the tray:
+
+```powershell
+.\scripts\start-codex-bridge-exe.ps1 -NativeUi -Hidden
+```
+
+Weak LAN clients do not need Codex credentials, but they do need a bridge
+Bearer token. Direct LAN access to the bridge API and the bridge-hosted `/ui`
+page is denied by default. Issue user tokens from the local native UI on the
+strong machine, then let weak clients use the GitHub Pages UI with the strong
+machine bridge URL.
+
+Run the same executable headlessly for automation:
+
+```powershell
+.\scripts\start-codex-bridge-exe.ps1
+```
+
+Package the executable, UI, docs, checksums, and run scripts for handoff:
+
+```powershell
+.\scripts\package-codex-bridge-release.ps1
+```
+
+Optional LAN setup helpers:
+
+```powershell
+.\scripts\new-codex-bridge-cert.ps1 -HostName 192.168.1.10
+.\scripts\open-codex-bridge-firewall.ps1 -Port 8765
+.\scripts\install-codex-bridge-task.ps1 -NativeUi -Hidden
+```
+
+Verify the bridge:
+
+```powershell
+.\scripts\verify-codex-bridge.ps1
+.\scripts\smoke-codex-bridge.ps1
+.\scripts\smoke-codex-bridge.ps1 -UseExe
+```
+
+See `docs/codex-bridge.md`, `docs/codex-bridge-architecture.md`,
+`docs/codex-bridge-codex-cli-coverage.md`,
+`docs/codex-bridge-acceptance.md`, `docs/codex-bridge-verification.md`, and
+`docs/codex-bridge-openapi.json` for API, token, workspace, GitHub Pages,
+network/TLS, Codex CLI coverage, and architecture notes.

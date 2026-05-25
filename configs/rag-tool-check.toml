@@ -10,7 +10,7 @@ report_json = "reports/rag-tool-check.json"
 [execution]
 python = "python"
 include_process_env = true
-command_timeout_seconds = 20
+command_timeout_seconds = 60
 network_checks = false
 storage_connection_checks = false
 sample_ingest_checks = false

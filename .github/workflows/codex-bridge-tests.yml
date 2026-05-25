@@ -1,0 +1,81 @@
+name: Codex Bridge Checks
+
+on:
+  push:
+    paths:
+      - tools/wrapper_modules/codex_bridge/**
+      - tools/codex_bridge_server.py
+      - tools/codex_bridge_app.py
+      - tools/codex_bridge_cert.py
+      - configs/codex-bridge.example.json
+      - docs/codex-ui/**
+      - docs/index.html
+      - docs/.nojekyll
+      - docs/codex-bridge*.md
+      - docs/codex-bridge-openapi.json
+      - scripts/*codex-bridge*.ps1
+      - tests/test_codex_bridge_core.py
+      - README.md
+      - .github/workflows/codex-bridge-tests.yml
+  pull_request:
+    paths:
+      - tools/wrapper_modules/codex_bridge/**
+      - tools/codex_bridge_server.py
+      - tools/codex_bridge_app.py
+      - tools/codex_bridge_cert.py
+      - configs/codex-bridge.example.json
+      - docs/codex-ui/**
+      - docs/index.html
+      - docs/.nojekyll
+      - docs/codex-bridge*.md
+      - docs/codex-bridge-openapi.json
+      - scripts/*codex-bridge*.ps1
+      - tests/test_codex_bridge_core.py
+      - README.md
+      - .github/workflows/codex-bridge-tests.yml
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -p "test_codex_bridge*.py"
+
+      - name: Compile Python
+        run: python -m compileall -q tools\wrapper_modules\codex_bridge tools\codex_bridge_server.py tools\codex_bridge_app.py tools\codex_bridge_cert.py
+
+      - name: Check UI JavaScript
+        run: node --check docs\codex-ui\app.js
+
+      - name: Check UI and workflow formatting
+        run: npx --yes prettier --check ".github/workflows/*.yml" "docs/**/*.html" "docs/**/*.css" "docs/**/*.js"
+
+      - name: Validate OpenAPI JSON
+        shell: pwsh
+        run: Get-Content -Raw docs\codex-bridge-openapi.json | ConvertFrom-Json | Out-Null
+
+      - name: Check live Codex CLI coverage
+        shell: pwsh
+        run: .\scripts\check-codex-bridge-coverage.ps1
+
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path scripts -Filter *.ps1 | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count -gt 0) {
+              $errors | ForEach-Object { Write-Error "$($_.Extent.File):$($_.Extent.StartLineNumber): $($_.Message)" }
+              throw "PowerShell parser found errors in $($_.FullName)"
+            }
+          }

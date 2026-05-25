@@ -14,12 +14,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
-[Console]::InputEncoding = $Utf8NoBom
-[Console]::OutputEncoding = $Utf8NoBom
-$OutputEncoding = $Utf8NoBom
-$env:PYTHONUTF8 = "1"
-$env:PYTHONIOENCODING = "utf-8"
+. (Join-Path $PSScriptRoot "Resolve-RagRuntime.ps1")
+$Python = Initialize-RagRuntime -Python $Python
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Launcher = Join-Path $RepoRoot "tools\wrapper.py"

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from wrapper_platform.modules import ModuleCommand, WrapperModule
+from wrapper_modules.codex_bridge.module import MODULE as CODEX_BRIDGE_MODULE
 from wrapper_modules.rag_anything.module import MODULE as RAG_ANYTHING_MODULE
 
-BUILTIN_MODULES: tuple[WrapperModule, ...] = (RAG_ANYTHING_MODULE,)
+BUILTIN_MODULES: tuple[WrapperModule, ...] = (RAG_ANYTHING_MODULE, CODEX_BRIDGE_MODULE)
 
 
 def list_modules() -> tuple[WrapperModule, ...]:

@@ -9,6 +9,9 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "Resolve-RagRuntime.ps1")
+$Python = Initialize-RagRuntime -Python $Python
+
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $Launcher = Join-Path $RepoRoot "tools\wrapper.py"
 $ConfigPath = if ([System.IO.Path]::IsPathRooted($Config)) {

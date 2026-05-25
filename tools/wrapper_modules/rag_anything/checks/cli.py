@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from wrapper_modules.rag_anything.core.config import as_list
@@ -42,7 +44,21 @@ def check_cli_manifest(checker: Any, discovered: dict[str, Any]) -> None:
             )
         for tool_name in as_list(manifest.get("optional_tools", [])):
             command = checker.commands.get(str(tool_name), [str(tool_name), "--version"])
-            ok, output, _ = run_command([str(item) for item in as_list(command)], checker.timeout)
+            commands = [[str(item) for item in as_list(command)]]
+            if str(tool_name).lower() == "pandoc":
+                roots = (os.environ.get("ProgramFiles"), os.environ.get("LOCALAPPDATA"))
+                for root in roots:
+                    if not root:
+                        continue
+                    candidate = Path(root) / "Pandoc" / "pandoc.exe"
+                    if candidate.exists():
+                        commands.append([str(candidate), "--version"])
+            ok = False
+            output = ""
+            for candidate_command in commands:
+                ok, output, _ = run_command(candidate_command, checker.timeout)
+                if ok:
+                    break
             checker.add(
                 "cli",
                 f"optional_tool:{tool_name}",

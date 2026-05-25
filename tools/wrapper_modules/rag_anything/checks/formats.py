@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from wrapper_modules.rag_anything.core.config import as_list
@@ -53,6 +55,12 @@ def check_format_features(checker: Any, discovered: dict[str, Any], env: dict[st
         required = bool(feature_requirements.get("office", False))
         command_config = checker.commands.get("libreoffice", [["libreoffice", "--version"], ["soffice", "--version"]])
         commands = [[str(part) for part in as_list(command)] for command in as_list(command_config)]
+        for root in (os.environ.get("ProgramFiles"), os.environ.get("ProgramFiles(x86)")):
+            if root:
+                for name in ("soffice.com", "soffice.exe"):
+                    candidate = Path(root) / "LibreOffice" / "program" / name
+                    if candidate.exists():
+                        commands.append([str(candidate), "--version"])
         ok, output, command = run_first_success(commands, checker.timeout)
         detail = output if ok else "LibreOffice/soffice not found"
         if ok and command:

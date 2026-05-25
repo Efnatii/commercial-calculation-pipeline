@@ -76,6 +76,16 @@ From the repository root:
 .\scripts\check-rag-tools.ps1
 ```
 
+The launcher auto-detects the shared workbench RAG runtime through
+`WORKBENCH_RAG_PYTHON` / `WORKBENCH_RAG_VENV`, falling back to
+`%WORKBENCH_ROOT%\30_LOCAL_HEAVY\runtime\rag-anything-python312\.venv`. The old
+`%WORKBENCH_ROOT%\07_TOOLS\ai_capabilities\rag\src\.venv` path is only a legacy
+fallback. The resolver prepends the shared venv to `PATH`, appends known
+LibreOffice and Pandoc command directories, and points Hugging
+Face/Torch/tiktoken caches at the workbench-local runtime cache. This keeps this
+repository from carrying another copy of the same Python packages and model
+downloads.
+
 For a non-failing report during setup:
 
 ```powershell
@@ -116,9 +126,27 @@ The JSON report is written to `reports/rag-tool-check.json` by default. The
 ## Configure
 
 1. Copy `configs/rag-runtime.env.example` to `.env`.
-2. Replace placeholder values with real local settings and secrets.
+2. Keep the default local Ollama values or replace them with real local
+   settings and secrets.
 3. Edit `configs/rag-tool-check.toml` to decide which parsers and format
    features are hard requirements for your machine.
+
+The default example uses local Ollama instead of paid OpenAI-compatible keys:
+`qwen2.5:1.5b` for LLM and `bge-m3:latest` for embeddings. Ollama ignores the
+dummy `ollama` API key value, but OpenAI-compatible client helpers still expect
+the variable to be present.
+
+Codex CLI can be pointed at the same local model without changing global
+OpenAI settings:
+
+```powershell
+codex exec --oss --local-provider ollama -m qwen2.5:1.5b --ephemeral "Reply with exactly OK."
+```
+
+The shared workbench RAG runtime is pinned to Python 3.12 so PaddlePaddle,
+PaddleOCR, MinerU, Docling, Ollama bindings, and CPU PyTorch can coexist in one
+managed venv. In this checker, "Paddle runtime" means the `paddlepaddle` package
+imported as `paddle`; `paddleocr` is the OCR package that uses that runtime.
 
 Examples:
 

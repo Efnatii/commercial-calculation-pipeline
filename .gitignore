@@ -21,6 +21,11 @@ build/
 *.log
 *.tmp
 reports/
+artifacts/
+.codex-bridge/
+.playwright-cli/
+codex-bridge-server.spec
+codex-bridge.spec
 ~$*
 
 # OS/editor files
